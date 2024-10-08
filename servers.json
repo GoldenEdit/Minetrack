@@ -5,11 +5,6 @@
 			"type": "PC"
 	},
 	{
-			"name": "Vanilla+ EU",
-			"ip": "eu.vanillaplus.net",
-			"type": "PC"
-	},
-	{
 			"name": "SpeedVanilla.com",
 			"ip": "speedvanilla.com",
 			"type": "PC"
@@ -65,12 +60,6 @@
 			"type": "PC"
 	},
 	{
-			"name": "VanillaTeams",
-			"ip": "vanillateams.net",
-			"type": "PC"
-	},
-
-	{
 			"name": "PvPHub",
 			"ip": "pvphub.me",
 			"type": "PC"
@@ -80,6 +69,5 @@
 			"ip": "pvplegacy.com",
 			"type": "PC"
 	}
-
 
 ]

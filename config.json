@@ -8,11 +8,11 @@
 		"connectTimeout": 2500
 	},
 	"oldPingsCleanup": {
-		"enabled": false,
+		"enabled": true,
 		"interval": 3600000
 	},
 	"logFailedPings": true,
-	"logToDatabase": false,
+	"logToDatabase": true,
 	"graphDuration": 86400000,
 	"serverGraphDuration": 180000
 }

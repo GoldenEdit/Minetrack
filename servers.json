@@ -1,12 +1,85 @@
 [
 	{
-		"name": "Hypixel",
-		"ip": "mc.hypixel.net",
-		"type": "PC"
+			"name": "Vanilla+",
+			"ip": "play.vanillaplus.net",
+			"type": "PC"
 	},
 	{
-		"name": "CubeCraft",
-		"ip": "play.cubecraft.net",
-		"type": "PC"
+			"name": "Vanilla+ EU",
+			"ip": "eu.vanillaplus.net",
+			"type": "PC"
+	},
+	{
+			"name": "SpeedVanilla.com",
+			"ip": "speedvanilla.com",
+			"type": "PC"
+	},
+	{
+			"name": "ClassicSurvival",
+			"ip": "mc.classicsurvival.net",
+			"type": "PC"
+	},
+	{
+			"name": "FireVanilla",
+			"ip": "firevanilla.net",
+			"type": "PC"
+	},
+	{
+			"name": "DonutSMP",
+			"ip": "donutsmp.net",
+			"type": "PC"
+	},
+	{
+			"name": "JackpotMC",
+			"ip": "play.jackpotmc.com",
+			"type": "PC"
+	},
+	{
+			"name": "KingSMP",
+			"ip": "kingsmp.net",
+			"type": "PC"
+	},
+	{
+			"name": "NA KingSMP",
+			"ip": "na.kingsmp.net",
+			"type": "PC"
+	},
+	{
+			"name": "USPvP",
+			"ip": "east.uspvp.org",
+			"type": "PC"
+	},
+	{
+			"name": "VintageSurvival",
+			"ip": "play.vintagesurvival.net",
+			"type": "PC"
+	},
+	{
+			"name": "EuropeMC",
+			"ip": "europemc.eu",
+			"type": "PC"
+	},
+	{
+			"name": "WildwoodSMP",
+			"ip": "play.wildwoodsmp.com",
+			"type": "PC"
+	},
+	{
+			"name": "VanillaTeams",
+			"ip": "vanillateams.net",
+			"type": "PC"
+	},
+
+	{
+			"name": "PvPHub",
+			"ip": "pvphub.me",
+			"type": "PC"
+	},
+	{
+			"name": "PvPLegacy",
+			"ip": "pvplegacy.com",
+			"type": "PC"
 	}
+
+
 ]

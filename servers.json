@@ -35,11 +35,6 @@
 			"type": "PC"
 	},
 	{
-			"name": "NA KingSMP",
-			"ip": "na.kingsmp.net",
-			"type": "PC"
-	},
-	{
 			"name": "USPvP",
 			"ip": "east.uspvp.org",
 			"type": "PC"

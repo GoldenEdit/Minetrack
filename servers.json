@@ -60,6 +60,11 @@
 			"type": "PC"
 	},
 	{
+			"name": "FreshSMP",
+			"ip": "play.freshsmp.fun",
+			"type": "PC"
+	},
+	{
 			"name": "PvPLegacy",
 			"ip": "pvplegacy.com",
 			"type": "PC"

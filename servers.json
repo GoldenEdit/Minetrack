@@ -65,6 +65,11 @@
 			"type": "PC"
 	},
 	{
+			"name": "Toxiss",
+			"ip": "toxiss.net",
+			"type": "PC"
+	},
+	{
 			"name": "PvPLegacy",
 			"ip": "pvplegacy.com",
 			"type": "PC"

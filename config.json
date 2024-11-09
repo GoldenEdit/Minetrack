@@ -11,8 +11,8 @@
 		"enabled": true,
 		"interval": 3600000
 	},
-	"logFailedPings": true,
+	"logFailedPings": false,
 	"logToDatabase": true,
-	"graphDuration": 86400000,
+	"graphDuration": 259200000,
 	"serverGraphDuration": 180000
 }

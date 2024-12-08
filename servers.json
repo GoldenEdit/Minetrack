@@ -10,11 +10,6 @@
 			"type": "PC"
 	},
 	{
-			"name": "ClassicSurvival",
-			"ip": "mc.classicsurvival.net",
-			"type": "PC"
-	},
-	{
 			"name": "FireVanilla",
 			"ip": "firevanilla.net",
 			"type": "PC"

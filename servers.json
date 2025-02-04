@@ -75,6 +75,11 @@
 			"type": "PC"
 	},
 	{
+			"name": "Gemstone",
+			"ip": "play.gemstone.gg",
+			"type": "PC"
+		},
+	{
 			"name": "PvPLegacy",
 			"ip": "pvplegacy.com",
 			"type": "PC"

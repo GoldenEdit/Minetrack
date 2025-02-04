@@ -5,13 +5,8 @@
 			"type": "PC"
 	},
 	{
-			"name": "SpeedVanilla.com",
+			"name": "SpeedVanilla",
 			"ip": "speedvanilla.com",
-			"type": "PC"
-	},
-	{
-			"name": "ClassicSurvival",
-			"ip": "mc.classicsurvival.net",
 			"type": "PC"
 	},
 	{

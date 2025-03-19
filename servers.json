@@ -73,7 +73,12 @@
 			"name": "Gemstone",
 			"ip": "play.gemstone.gg",
 			"type": "PC"
-		},
+	},
+	{
+			"name": "NovaSurvival",
+			"ip": "NovaSurvival.org",
+			"type": "PC"
+	},
 	{
 			"name": "PvPLegacy",
 			"ip": "pvplegacy.com",

@@ -80,6 +80,11 @@
 			"type": "PC"
 	},
 	{
+			"name": "NeonSurvival",
+			"ip": "NeonSurvival.net",
+			"type": "PC"
+	},
+	{
 			"name": "PvPLegacy",
 			"ip": "pvplegacy.com",
 			"type": "PC"

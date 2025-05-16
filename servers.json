@@ -85,6 +85,11 @@
 			"type": "PC"
 	},
 	{
+			"name": "PrimeVanilla",
+			"ip": "primevanilla.com",
+			"type": "PC"
+	},
+	{
 			"name": "PvPLegacy",
 			"ip": "pvplegacy.com",
 			"type": "PC"

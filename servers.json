@@ -90,6 +90,11 @@
 			"type": "PC"
 	},
 	{
+			"name": "PrimeVanilla",
+			"ip": "crystalchaos.net",
+			"type": "PC"
+	},
+	{
 			"name": "PvPLegacy",
 			"ip": "pvplegacy.com",
 			"type": "PC"

@@ -85,6 +85,11 @@
 			"type": "PC"
 	},
 	{
+			"name": "RoyceMC",
+			"ip": "roycemc.net",
+			"type": "PC"
+	},
+	{
 			"name": "PvPLegacy",
 			"ip": "pvplegacy.com",
 			"type": "PC"

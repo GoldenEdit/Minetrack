@@ -85,6 +85,11 @@
 			"type": "PC"
 	},
 	{
+			"name": "GalaxySMP",
+			"ip": "play.gsmp.gg",
+			"type": "PC"
+	},
+	{
 			"name": "PvPLegacy",
 			"ip": "pvplegacy.com",
 			"type": "PC"

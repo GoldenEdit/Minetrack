@@ -70,18 +70,13 @@
 			"type": "PC"
 	},
 	{
-			"name": "PrimeVanilla",
-			"ip": "primevanilla.com",
+			"name": "Stray",
+			"ip": "stray.gg",
 			"type": "PC"
 	},
 	{
 			"name": "CrystalChaos",
 			"ip": "crystalchaos.net",
-			"type": "PC"
-	},
-	{
-			"name": "ShardsMC",
-			"ip": "shardsmc.net",
 			"type": "PC"
 	},
 	{

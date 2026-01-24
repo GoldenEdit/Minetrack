@@ -88,6 +88,16 @@
 			"name": "PvPLegacy",
 			"ip": "pvplegacy.com",
 			"type": "PC"
+	},
+	{
+			"name": "MCPVP",
+			"ip": "mcpvp.club",
+			"type": "PC"
+	},
+	{
+			"name": "MCPVP EU",
+			"ip": "eu.mcpvp.club",
+			"type": "PC"
 	}
 
 ]

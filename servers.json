@@ -90,12 +90,12 @@
 			"type": "PC"
 	},
 	{
-			"name": "MCPVP",
+			"name": "MCPvP",
 			"ip": "mcpvp.club",
 			"type": "PC"
 	},
 	{
-			"name": "MCPVP EU",
+			"name": "MCPvP EU",
 			"ip": "eu.mcpvp.club",
 			"type": "PC"
 	}

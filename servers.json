@@ -40,9 +40,10 @@
 			"type": "PC"
 	},
 	{
-			"name": "WildwoodSMP",
-			"ip": "play.wildwoodsmp.com",
-			"type": "PC"
+		"name": "WildwoodSMP",
+		"ip": "play.wildwoodsmp.com",
+		"type": "PC",
+		"maxPlayerCount": 1000
 	},
 	{
 			"name": "PvPHub",

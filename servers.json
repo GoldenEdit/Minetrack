@@ -94,6 +94,11 @@
 			"name": "MCPvP",
 			"ip": "mcpvp.club",
 			"type": "PC"
+	},
+	{
+			"name": "MCPvP.com (Dream)",
+			"ip": "mcpvp.com",
+			"type": "PC"
 	}
 
 ]

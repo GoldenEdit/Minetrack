@@ -99,6 +99,11 @@
 			"name": "MCPvP.com (Dream)",
 			"ip": "mcpvp.com",
 			"type": "PC"
+	},
+	{
+			"name": "CPvP",
+			"ip": "cpvp.gg",
+			"type": "PC"
 	}
 
 ]

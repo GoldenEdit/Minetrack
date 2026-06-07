@@ -104,6 +104,11 @@
 			"name": "CPvP",
 			"ip": "cpvp.gg",
 			"type": "PC"
+	},
+	{
+			"name": "FTS",
+			"ip": "fighttosurvive.net",
+			"type": "PC"
 	}
 
 ]

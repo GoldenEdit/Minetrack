@@ -109,6 +109,11 @@
 			"name": "FTS",
 			"ip": "fighttosurvive.net",
 			"type": "PC"
+	},
+	{
+			"name": "CentralVanilla",
+			"ip": "centralvanilla.net",
+			"type": "PC"
 	}
 
 ]

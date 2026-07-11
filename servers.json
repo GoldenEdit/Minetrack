@@ -114,6 +114,11 @@
 			"name": "CentralVanilla",
 			"ip": "centralvanilla.net",
 			"type": "PC"
+	},
+	{
+			"name": "ApolloCPvP",
+			"ip": "apollocpvp.org",
+			"type": "PC"
 	}
 
 ]

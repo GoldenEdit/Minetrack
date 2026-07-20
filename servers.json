@@ -10,6 +10,16 @@
 			"type": "PC"
 	},
 	{
+			"name": "VX - GEO",
+			"ip": "geo.vanillax.net",
+			"type": "PC"
+	},
+	{
+			"name": "VX - NAE",
+			"ip": "nae.vanillax.net",
+			"type": "PC"
+	},
+	{
 			"name": "SpeedVanilla",
 			"ip": "play.speedvanilla.com",
 			"type": "PC"

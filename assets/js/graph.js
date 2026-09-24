@@ -24,6 +24,7 @@ export class GraphDisplayManager {
     this._initEventListenersOnce = false
     this._showOnlyFavorites = false
     this._showHistory = true
+    this._soloIds = new Set()
     this._lastWeekData = undefined
     this._lastWeekSeries = []
     this._lastWeekRequestedAt = undefined
@@ -100,6 +101,18 @@ export class GraphDisplayManager {
           } else {
             serverRegistration.isVisible = serverNames.indexOf(serverRegistration.data.name) < 0
           }
+        }
+      }
+
+      // A partial hidden set is a solo: those servers stay selected until the last one is cleared
+      this._soloIds = new Set()
+
+      if (!this._showOnlyFavorites) {
+        const servers = this._app.serverRegistry.getServerRegistrations()
+        const visibleIds = servers.filter(serverRegistration => serverRegistration.isVisible).map(serverRegistration => serverRegistration.serverId)
+
+        if (visibleIds.length > 0 && visibleIds.length < servers.length) {
+          this._soloIds = new Set(visibleIds)
         }
       }
     }
@@ -635,14 +648,28 @@ export class GraphDisplayManager {
   }
 
   toggleServer (serverRegistration) {
-    serverRegistration.isVisible = !serverRegistration.isVisible
-
     // Any manual changes automatically disables "Only Favorites" mode
     // Otherwise the auto management might overwrite their manual changes
     this._showOnlyFavorites = false
-    serverRegistration.updateSeriesVisibility()
+
+    if (this._soloIds.has(serverRegistration.serverId)) {
+      this._soloIds.delete(serverRegistration.serverId)
+    } else {
+      this._soloIds.add(serverRegistration.serverId)
+    }
+
+    // An empty solo means nothing is selected, so every server is shown again
+    const soloing = this._soloIds.size > 0
+
+    for (const server of this._app.serverRegistry.getServerRegistrations()) {
+      server.isVisible = soloing ? this._soloIds.has(server.serverId) : true
+    }
 
     if (!this._plotInstance) {
+      for (const server of this._app.serverRegistry.getServerRegistrations()) {
+        server.updateSeriesVisibility()
+      }
+
       this.updateLocalStorage()
       this.updateControls()
       return
@@ -659,6 +686,7 @@ export class GraphDisplayManager {
     // visible graphData is automatically updating when a ServerRegistration's #isVisible changes
     // This is also saved and loaded by #loadLocalStorage & #updateLocalStorage
     this._showOnlyFavorites = showType === 'favorites'
+    this._soloIds.clear()
 
     let redraw = false
 
@@ -729,6 +757,7 @@ export class GraphDisplayManager {
     this._graphTimestamps = []
     this._graphData = []
     this._hasLoadedSettings = false
+    this._soloIds = new Set()
 
     this._lastWeekData = undefined
     this._lastWeekSeries = []

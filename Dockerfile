@@ -15,13 +15,14 @@ RUN sed -i '/debian-security/d' /etc/apt/sources.list                \
  && apt-get autoremove --quiet --yes                                 \
  && rm -rf /var/lib/apt/lists/*
 
-# copy minetrack files
+# Install dependencies before copying the app so edits to servers.json,
+# HTML, and other source files do not rebuild native modules.
 WORKDIR /usr/src/minetrack
-COPY . .
+COPY package.json package-lock.json ./
+RUN npm ci
 
-# build minetrack
-RUN npm install --build-from-source \
- && npm run build
+COPY . .
+RUN npm run build
 
 # run as non root
 # RUN addgroup --gid 10043 --system minetrack \

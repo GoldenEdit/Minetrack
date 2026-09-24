@@ -271,7 +271,7 @@ a:hover {
   z-index: 5;
   top: calc(100% + 4px);
   left: 0;
-  min-width: 100%;
+  min-width: max(100%, 168px);
   padding: 4px 0;
   background: var(--surface-2);
   border: 1px solid var(--line);
@@ -302,8 +302,55 @@ a:hover {
   visibility: hidden;
 }
 
-.range-menu-option.is-active .range-menu-check {
+.range-menu-option.is-active .range-menu-check,
+.range-menu-custom.is-active .range-menu-check {
   visibility: visible;
+}
+
+.range-menu-custom {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  padding: 6px 8px 4px 10px;
+  border-top: 1px solid var(--line);
+}
+
+.range-menu-custom-label {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 510;
+  white-space: nowrap;
+}
+
+.range-menu-custom.is-active .range-menu-custom-label {
+  color: var(--text);
+}
+
+.range-menu-custom input {
+  flex: 1;
+  min-width: 0;
+  height: 22px;
+  padding: 0 6px;
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+  background: var(--canvas);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 510;
+}
+
+.range-menu-custom input:focus {
+  outline: none;
+  border-color: var(--text-muted);
+}
+
+.range-menu-custom input.is-invalid {
+  border-color: #e5484d;
+}
+
+.range-menu-custom .range-menu-check {
+  flex: none;
 }
 
 .graph-scroll {

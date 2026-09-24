@@ -1,3 +1,4 @@
+import ms from 'ms'
 import uPlot from 'uplot'
 
 import { RelativeScale } from './scale'
@@ -16,11 +17,24 @@ const SHOW_HISTORY_STORAGE_KEY = 'minetrack_show_history'
 const LAST_WEEK_REFRESH_MARGIN_SECONDS = 120
 const LAST_WEEK_RETRY_DELAY = 30 * 1000
 
-const HOUR = 60 * 60
+const MINUTE = 60
+const HOUR = 60 * MINUTE
 const DAY = 24 * HOUR
 const RANGE_PRESETS = [HOUR, 6 * HOUR, DAY, 3 * DAY, 7 * DAY, 14 * DAY]
 const DEFAULT_RANGE = 3 * DAY
 const UNFOCUSED_ALPHA = 0.15
+// A duration needs a unit. ms treats a bare number as milliseconds.
+function parseCustomRange (text, maxSeconds) {
+  const value = text.trim()
+  if (!value || !/[a-z]/i.test(value)) return
+
+  const millis = ms(value)
+  if (typeof millis !== 'number' || !Number.isFinite(millis) || millis <= 0) return
+
+  const seconds = Math.max(MINUTE, Math.round(millis / 1000 / MINUTE) * MINUTE)
+  return Math.min(seconds, maxSeconds)
+}
+
 const LINE_WIDTH = 1.5
 const FOCUSED_LINE_WIDTH = 2.5
 const HISTORY_LINE_WIDTH = 1
@@ -602,12 +616,17 @@ export class GraphDisplayManager {
     const presets = RANGE_PRESETS.filter(seconds => seconds < fullRange).concat(fullRange)
     const check = '<svg class="range-menu-check" viewBox="0 0 10 10" width="10" height="10" aria-hidden="true"><path d="M2 5.2 L4.1 7.3 L8 2.8" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="square" stroke-linejoin="miter"/></svg>'
 
-    list.innerHTML = presets.map(seconds =>
-      `<button type="button" class="range-menu-option" role="option" data-range="${seconds}" aria-selected="false">${escapeHtml(formatRange(seconds))}${check}</button>`
-    ).join('')
+    list.innerHTML =
+      `<div role="listbox" aria-label="Time range">${presets.map(seconds =>
+        `<button type="button" class="range-menu-option" role="option" data-range="${seconds}" aria-selected="false">${escapeHtml(formatRange(seconds))}${check}</button>`
+      ).join('')}</div>` +
+      `<form class="range-menu-custom">
+        <span class="range-menu-custom-label">Custom</span>
+        <input type="text" placeholder="2 days" aria-label="Custom time range" autocomplete="off" spellcheck="false">
+        ${check}
+      </form>`
 
-    // A single choice would have nothing to open
-    container.hidden = presets.length < 2
+    container.hidden = false
   }
 
   // A range of 0 means the user dragged a custom zoom
@@ -633,6 +652,18 @@ export class GraphDisplayManager {
       } else {
         label.textContent = formatRange(this._rangeSeconds)
         container.querySelector('.range-menu-toggle').removeAttribute('title')
+      }
+
+      const custom = container.querySelector('.range-menu-custom')
+      if (custom) {
+        const isCustomDuration = !isCustomZoom && !Array.from(container.querySelectorAll('.range-menu-option')).some(button => button.classList.contains('is-active'))
+        custom.classList.toggle('is-active', isCustomDuration)
+        const input = custom.querySelector('input')
+        if (input) {
+          input.value = isCustomDuration ? formatRange(this._rangeSeconds) : ''
+          input.classList.remove('is-invalid')
+          input.removeAttribute('aria-invalid')
+        }
       }
     }
 
@@ -694,6 +725,28 @@ export class GraphDisplayManager {
     }
   }
 
+  handleCustomRangeSubmit = (event) => {
+    event.preventDefault()
+    const input = event.target.querySelector('input')
+    const seconds = parseCustomRange(input.value, this.getFullRange())
+    if (!seconds) {
+      input.classList.add('is-invalid')
+      input.setAttribute('aria-invalid', 'true')
+      return
+    }
+
+    input.classList.remove('is-invalid')
+    input.removeAttribute('aria-invalid')
+    this.setRange(seconds)
+    this.setRangeMenuOpen(false)
+  }
+
+  handleCustomRangeInput = (event) => {
+    if (!event.target.matches('.range-menu-custom input')) return
+    event.target.classList.remove('is-invalid')
+    event.target.removeAttribute('aria-invalid')
+  }
+
   setRangeMenuOpen (open) {
     const menu = document.getElementById('graph-range')
     const list = document.getElementById('graph-range-list')
@@ -704,6 +757,17 @@ export class GraphDisplayManager {
     menu.classList.toggle('is-open', open)
     list.hidden = !open
     toggle.setAttribute('aria-expanded', open ? 'true' : 'false')
+
+    if (!open) {
+      const custom = list.querySelector('.range-menu-custom')
+      const input = custom && custom.querySelector('input')
+      if (input) {
+        input.blur()
+        input.classList.remove('is-invalid')
+        input.removeAttribute('aria-invalid')
+        input.value = custom.classList.contains('is-active') ? formatRange(this._rangeSeconds) : ''
+      }
+    }
   }
 
   handleRangeMenuDismiss = (event) => {
@@ -965,6 +1029,12 @@ export class GraphDisplayManager {
       for (const id in listeners) {
         const element = document.getElementById(id)
         if (element) element.addEventListener('click', listeners[id], false)
+      }
+
+      const rangeMenu = document.getElementById('graph-range')
+      if (rangeMenu) {
+        rangeMenu.addEventListener('submit', this.handleCustomRangeSubmit, false)
+        rangeMenu.addEventListener('input', this.handleCustomRangeInput, false)
       }
 
       document.addEventListener('click', this.handleRangeMenuDismiss, false)

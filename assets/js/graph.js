@@ -3,7 +3,7 @@ import uPlot from 'uplot'
 import { RelativeScale } from './scale'
 
 import { formatNumber, formatTimestampSeconds, escapeHtml, safeCssColor } from './util'
-import { uPlotTooltipPlugin } from './plugins'
+import { uPlotTooltipPlugin, uPlotRangeSelectPlugin } from './plugins'
 
 import { FAVORITE_SERVERS_STORAGE_KEY, compareFavoriteFirst } from './favorites'
 import { isLegacyDesign } from './design'
@@ -337,7 +337,8 @@ export class GraphDisplayManager {
           } else {
             this._app.tooltip.hide()
           }
-        })
+        }),
+        ...(legacy ? [] : [uPlotRangeSelectPlugin(formatTimestampSeconds)])
       ],
       ...this.getPlotSize(),
       cursor: legacy

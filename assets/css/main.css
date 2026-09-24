@@ -638,8 +638,35 @@ footer {
   border-bottom: 1px solid var(--line-strong) !important;
 }
 
+#big-graph .over {
+  cursor: crosshair;
+}
+
+.uplot .select,
 .uplot .u-select {
-  background: rgba(247, 248, 248, 0.08);
+  background: rgba(64, 139, 222, 0.22);
+  box-shadow: inset 1px 0 0 #408bde, inset -1px 0 0 #408bde;
+}
+
+.graph-range-label {
+  position: absolute;
+  z-index: 3;
+  display: none;
+  padding: 1px 6px;
+  border-radius: 2px;
+  background: #408bde;
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 16px;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.graph-range-label.is-end {
+  transform: translateX(-100%);
 }
 
 .server-spark .uplot {

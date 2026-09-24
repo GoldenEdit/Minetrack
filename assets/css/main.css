@@ -222,8 +222,24 @@ a:hover {
 .graph-controls {
   display: none;
   flex-wrap: wrap;
+  align-items: center;
   gap: 4px 8px;
   margin-bottom: 8px;
+}
+
+.segmented-sm {
+  height: 26px;
+}
+
+.segmented-sm .segment {
+  padding: 0 8px;
+  font-size: 12px;
+}
+
+.segmented[hidden],
+.ghost[hidden],
+.server-list-controls[hidden] {
+  display: none;
 }
 
 .graph-scroll {
@@ -264,10 +280,6 @@ a:hover {
   flex-wrap: wrap;
   gap: 4px 8px;
   padding-top: 8px;
-}
-
-.server-list-controls[hidden] {
-  display: none;
 }
 
 .server {

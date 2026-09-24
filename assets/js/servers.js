@@ -571,8 +571,26 @@ export class ServerRegistration {
 
     if (isLegacyDesign()) return
 
+    let isMouseOver = false
+
     row.addEventListener('click', () => {
       this._app.graphDisplayManager.toggleServer(this)
+
+      // Toggling can hide or show the hovered server, so its focus needs recomputing
+      if (isMouseOver) this._app.graphDisplayManager.focusServer(this)
+    }, false)
+
+    // Touch has no hover out, so a tap would leave the other lines dimmed
+    row.addEventListener('pointerenter', (event) => {
+      if (event.pointerType !== 'mouse') return
+      isMouseOver = true
+      this._app.graphDisplayManager.focusServer(this)
+    }, false)
+
+    row.addEventListener('pointerleave', (event) => {
+      if (event.pointerType !== 'mouse') return
+      isMouseOver = false
+      this._app.graphDisplayManager.focusServer(null)
     }, false)
   }
 }

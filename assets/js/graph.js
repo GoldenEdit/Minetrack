@@ -2,8 +2,9 @@ import uPlot from 'uplot'
 
 import { RelativeScale } from './scale'
 
-import { formatNumber, formatTimestampSeconds, escapeHtml, safeCssColor } from './util'
-import { uPlotTooltipPlugin, uPlotRangeSelectPlugin } from './plugins'
+import { formatNumber, formatTimestampSeconds, formatDayTime, escapeHtml, safeCssColor } from './util'
+import { uPlotTooltipPlugin, uPlotRangeSelectPlugin, uPlotDayBoundariesPlugin } from './plugins'
+import { parseSharedView, writeSharedViewToUrl, formatRange } from './share'
 
 import { FAVORITE_SERVERS_STORAGE_KEY, compareFavoriteFirst } from './favorites'
 import { isLegacyDesign } from './design'
@@ -14,6 +15,14 @@ const SHOW_HISTORY_STORAGE_KEY = 'minetrack_show_history'
 
 const LAST_WEEK_REFRESH_MARGIN_SECONDS = 120
 const LAST_WEEK_RETRY_DELAY = 30 * 1000
+
+const HOUR = 60 * 60
+const DAY = 24 * HOUR
+const RANGE_PRESETS = [HOUR, 6 * HOUR, DAY, 3 * DAY, 7 * DAY, 14 * DAY]
+const UNFOCUSED_ALPHA = 0.15
+const LINE_WIDTH = 1.5
+const FOCUSED_LINE_WIDTH = 2.5
+const HISTORY_LINE_WIDTH = 1
 
 export class GraphDisplayManager {
   constructor (app) {
@@ -28,6 +37,12 @@ export class GraphDisplayManager {
     this._lastWeekData = undefined
     this._lastWeekSeries = []
     this._lastWeekRequestedAt = undefined
+    this._rangeSeconds = 0
+    this._lockRange = false
+    this._focusedId = null
+    this._pendingFocusId = null
+    this._focusFrame = undefined
+    this._sharedView = undefined
   }
 
   addGraphPoint (timestamp, playerCounts) {
@@ -38,9 +53,6 @@ export class GraphDisplayManager {
       // and the application has received updates prior to the initial state
       return
     }
-
-    // Read before the new point is pushed, or the comparison against the old ends always fails
-    const isZoomed = this.isZoomed()
 
     this._graphTimestamps.push(timestamp)
 
@@ -66,8 +78,16 @@ export class GraphDisplayManager {
       this.refreshLastWeekGraphIfNeeded(timestamp)
     }
 
-    // Avoid redrawing the plot when zoomed
-    this._plotInstance.setData(this.getGraphData(), !isZoomed)
+    this.updatePlotData()
+  }
+
+  // A preset window slides forward with new data, while a manual zoom stays where the user put it
+  updatePlotData () {
+    this._plotInstance.setData(this.getGraphData(), false)
+
+    if (this._rangeSeconds) {
+      this.applyRange()
+    }
   }
 
   loadLocalStorage () {
@@ -116,9 +136,71 @@ export class GraphDisplayManager {
         }
       }
     }
+
+    this.loadSharedView()
+  }
+
+  // The address bar holds the whole view, so a missing param means its default rather than the saved setting.
+  // Saved settings are left alone until the visitor changes something.
+  loadSharedView () {
+    this._sharedView = parseSharedView(location.search)
+
+    if (!this._sharedView) return
+
+    this._showHistory = this._sharedView.history !== false
+    this._showOnlyFavorites = false
+
+    const sharedNames = new Set(this._sharedView.servers || [])
+    const servers = this._app.serverRegistry.getServerRegistrations()
+    const sharedIds = new Set(servers
+      .filter(serverRegistration => sharedNames.has(serverRegistration.data.name))
+      .map(serverRegistration => serverRegistration.serverId))
+
+    // Names that no longer exist are ignored, and with none left every server is shown
+    const soloing = sharedIds.size > 0 && sharedIds.size < servers.length
+    this._soloIds = soloing ? sharedIds : new Set()
+
+    for (const serverRegistration of servers) {
+      serverRegistration.isVisible = !soloing || sharedIds.has(serverRegistration.serverId)
+    }
+  }
+
+  applyInitialRange () {
+    const view = this._sharedView || {}
+    const first = this._graphTimestamps[0]
+    const last = this._graphTimestamps[this._graphTimestamps.length - 1]
+
+    if (view.range) {
+      this.setRange(Math.min(view.range, this.getFullRange()))
+    } else if (view.from && view.to && view.to > first && view.from < last) {
+      this.withRangeLock(() => {
+        this._plotInstance.setScale('x', {
+          min: Math.max(view.from, first),
+          max: Math.min(view.to, last)
+        })
+      })
+      this._rangeSeconds = this.isZoomed() ? 0 : this.getFullRange()
+      this.updateRangeControls()
+    } else {
+      // Keeps the chosen preset across a reconnect, where a manual zoom falls back to the full range.
+      // Old links can also point at a window that has already scrolled out of the graph.
+      this.setRange(this._rangeSeconds || this.getFullRange())
+    }
+  }
+
+  endSharedView () {
+    this._sharedView = undefined
+  }
+
+  updateUrl () {
+    if (this._plotInstance) writeSharedViewToUrl(this.getShareView())
   }
 
   updateLocalStorage () {
+    this.updateUrl()
+
+    if (this._sharedView) return
+
     if (typeof localStorage !== 'undefined') {
       // Mutate the serverIds array into server names for storage use
       const serverNames = this._app.serverRegistry.getServerRegistrations()
@@ -149,15 +231,16 @@ export class GraphDisplayManager {
     }
   }
 
-  getVisibleGraphData () {
+  // Limited to the visible time window, so a short range is not flattened by a peak outside it
+  getVisibleGraphData (startIndex, endIndex) {
     const visibleGraphData = []
 
     for (const serverRegistration of this._app.serverRegistry.getServerRegistrations()) {
       if (serverRegistration.isVisible) {
-        visibleGraphData.push(this._graphData[serverRegistration.serverId])
+        visibleGraphData.push(this._graphData[serverRegistration.serverId].slice(startIndex, endIndex + 1))
 
         if (this._showHistory) {
-          visibleGraphData.push(this._lastWeekSeries[serverRegistration.serverId])
+          visibleGraphData.push(this._lastWeekSeries[serverRegistration.serverId].slice(startIndex, endIndex + 1))
         }
       }
     }
@@ -290,7 +373,7 @@ export class GraphDisplayManager {
     const series = this._app.serverRegistry.getServerRegistrations().map(serverRegistration => {
       return {
         stroke: safeCssColor(serverRegistration.data.color),
-        width: legacy ? 2 : 1.5,
+        width: legacy ? 2 : LINE_WIDTH,
         value: (_, raw) => `${formatNumber(raw)} Players`,
         show: serverRegistration.isVisible,
         spanGaps: true,
@@ -304,7 +387,7 @@ export class GraphDisplayManager {
     for (const serverRegistration of this._app.serverRegistry.getServerRegistrations()) {
       series.push({
         stroke: safeCssColor(serverRegistration.data.color),
-        width: legacy ? 1.5 : 1,
+        width: legacy ? 1.5 : HISTORY_LINE_WIDTH,
         dash: legacy ? [6, 5] : [4, 4],
         show: serverRegistration.isVisible && this._showHistory,
         spanGaps: true,
@@ -316,11 +399,19 @@ export class GraphDisplayManager {
 
     const tickCount = 10
     const maxFactor = 4
-    const splitYAxis = () => {
-      const visibleGraphData = this.getVisibleGraphData()
-      const { scaledMax, scale } = RelativeScale.scaleMatrix(visibleGraphData, tickCount, maxFactor)
-      return RelativeScale.generateTicks(0, scaledMax, scale)
+
+    // The axis splits are drawn right after the range is computed, so they reuse its step
+    let yStep = 1
+    const rangeYAxis = (u) => {
+      const [startIndex, endIndex] = u.series[0].idxs
+      const { scaledMin, scaledMax, scale } = RelativeScale.scaleMatrix(this.getVisibleGraphData(startIndex, endIndex), tickCount, maxFactor)
+      yStep = scale
+      return [scaledMin, scaledMax]
     }
+    const splitYAxis = (u, min, max) => RelativeScale.generateTicks(min, max, yStep)
+
+    // The initial scale is not a user zoom, so keep handleScaleChange from clearing a preset
+    this._lockRange = true
 
     // eslint-disable-next-line new-cap
     this._plotInstance = new uPlot({
@@ -338,8 +429,20 @@ export class GraphDisplayManager {
             this._app.tooltip.hide()
           }
         }),
-        ...(legacy ? [] : [uPlotRangeSelectPlugin(formatTimestampSeconds)])
+        ...(legacy
+          ? []
+          : [
+              uPlotRangeSelectPlugin(formatDayTime),
+              uPlotDayBoundariesPlugin({
+                lineColor: '#34343a',
+                labelColor: '#62666d',
+                fontFamily: '"JetBrains Mono", ui-monospace, monospace'
+              })
+            ])
       ],
+      hooks: {
+        setScale: [this.handleScaleChange]
+      },
       ...this.getPlotSize(),
       cursor: legacy
         ? { y: false }
@@ -411,17 +514,15 @@ export class GraphDisplayManager {
       scales: {
         y: {
           auto: false,
-          range: () => {
-            const visibleGraphData = this.getVisibleGraphData()
-            const { scaledMin, scaledMax } = RelativeScale.scaleMatrix(visibleGraphData, tickCount, maxFactor)
-            return [scaledMin, scaledMax]
-          }
+          range: rangeYAxis
         }
       },
       legend: {
         show: false
       }
     }, this.getGraphData(), document.getElementById('big-graph'))
+
+    this._lockRange = false
 
     if (legacy) {
       const settingsToggle = document.getElementById('settings-toggle')
@@ -439,10 +540,152 @@ export class GraphDisplayManager {
     }
 
     this.updateHistoryButton()
+    this.renderRangeControls()
+    this.applyInitialRange()
 
     if (this._showHistory) {
       this.refreshLastWeekGraphIfNeeded(this._graphTimestamps[this._graphTimestamps.length - 1])
     }
+  }
+
+  getFullRange () {
+    return this._app.publicConfig.graphDuration
+  }
+
+  // Presets come from the configured graph length, and one longer than the data collected so far just shows all of it
+  renderRangeControls () {
+    const container = document.getElementById('graph-range')
+    if (!container) return
+
+    const fullRange = this.getFullRange()
+    const presets = RANGE_PRESETS.filter(seconds => seconds < fullRange).concat(fullRange)
+
+    container.innerHTML = presets.map(seconds =>
+      `<button type="button" class="segment" data-range="${seconds}" aria-pressed="false">${escapeHtml(formatRange(seconds))}</button>`
+    ).join('')
+
+    // A single button would have nothing to choose between
+    container.hidden = presets.length < 2
+  }
+
+  // A range of 0 means the user dragged a custom zoom
+  updateRangeControls () {
+    const isCustomZoom = !this._rangeSeconds
+
+    const container = document.getElementById('graph-range')
+    if (container) {
+      container.querySelectorAll('.segment').forEach(button => {
+        const isActive = !isCustomZoom && parseInt(button.getAttribute('data-range')) === this._rangeSeconds
+        button.classList.toggle('is-active', isActive)
+        button.setAttribute('aria-pressed', isActive ? 'true' : 'false')
+      })
+    }
+
+    const resetZoom = document.getElementById('graph-reset-zoom')
+    if (resetZoom) resetZoom.hidden = !isCustomZoom
+
+    this.updateUrl()
+  }
+
+  withRangeLock (fn) {
+    const wasLocked = this._lockRange
+    this._lockRange = true
+    try {
+      fn()
+    } finally {
+      this._lockRange = wasLocked
+    }
+  }
+
+  setRange (seconds) {
+    this._rangeSeconds = seconds
+    this.applyRange()
+    this.updateRangeControls()
+  }
+
+  applyRange () {
+    const first = this._graphTimestamps[0]
+    const last = this._graphTimestamps[this._graphTimestamps.length - 1]
+    const min = Math.max(first, last - this._rangeSeconds)
+
+    this.withRangeLock(() => {
+      this._plotInstance.setScale('x', { min, max: last })
+    })
+  }
+
+  // Scale changes that did not come from a preset are drag zooms or double click resets
+  handleScaleChange = (u, key) => {
+    if (key !== 'x' || this._lockRange) return
+
+    this._rangeSeconds = this.isZoomed() ? 0 : this.getFullRange()
+    this.updateRangeControls()
+  }
+
+  handleRangeClick = (event) => {
+    const button = event.target.closest('[data-range]')
+    if (button) this.setRange(parseInt(button.getAttribute('data-range')))
+  }
+
+  handleResetZoomClick = () => {
+    this.setRange(this.getFullRange())
+  }
+
+  // Dims every other server so the hovered row's live and history lines stand out
+  focusServer (serverRegistration) {
+    if (!this._plotInstance) return
+
+    this._pendingFocusId = serverRegistration && serverRegistration.isVisible ? serverRegistration.serverId : null
+
+    // Moving between rows fires a leave then an enter, which should cost one repaint rather than two
+    if (this._focusFrame === undefined) {
+      this._focusFrame = requestAnimationFrame(this.applyFocus)
+    }
+  }
+
+  applyFocus = () => {
+    this._focusFrame = undefined
+
+    const focusedId = this._pendingFocusId
+    if (!this._plotInstance || focusedId === this._focusedId) return
+
+    this._focusedId = focusedId
+
+    for (const server of this._app.serverRegistry.getServerRegistrations()) {
+      const isFocused = server.serverId === focusedId
+      const alpha = focusedId === null || isFocused ? 1 : UNFOCUSED_ALPHA
+
+      const live = this._plotInstance.series[server.getGraphDataIndex()]
+      live.alpha = alpha
+      live.width = isFocused ? FOCUSED_LINE_WIDTH : LINE_WIDTH
+
+      this._plotInstance.series[this.getLastWeekSeriesIndex(server.serverId)].alpha = alpha
+    }
+
+    this._plotInstance.redraw(false)
+  }
+
+  getShareView () {
+    const servers = this._app.serverRegistry.getServerRegistrations()
+    const visible = servers.filter(serverRegistration => serverRegistration.isVisible)
+    const view = {}
+
+    if (visible.length > 0 && visible.length < servers.length) {
+      view.servers = visible.map(serverRegistration => serverRegistration.data.name)
+    }
+
+    // The full range is the default, so it stays out of the address bar
+    if (!this._rangeSeconds) {
+      view.from = Math.floor(this._plotInstance.scales.x.min)
+      view.to = Math.ceil(this._plotInstance.scales.x.max)
+    } else if (this._rangeSeconds !== this.getFullRange()) {
+      view.range = this._rangeSeconds
+    }
+
+    if (!this._showHistory) {
+      view.history = false
+    }
+
+    return view
   }
 
   getTooltipServers () {
@@ -469,7 +712,7 @@ export class GraphDisplayManager {
         return `<div class="tip-row${isActive ? ' is-active' : ''}"><span class="tip-dot" style="background:${safeCssColor(serverRegistration.data.color)}"></span><span class="tip-name">${escapeHtml(serverRegistration.data.name)}</span><span class="tip-count">${formatNumber(point)}${previous}</span></div>`
       }).join('')
 
-    return `<div class="tip-time">${escapeHtml(formatTimestampSeconds(this._graphTimestamps[idx]))}</div>${rows}`
+    return `<div class="tip-time">${escapeHtml(formatDayTime(this._graphTimestamps[idx]))}</div>${rows}`
   }
 
   formatLegacyTooltip (idx, closestSeriesIndex) {
@@ -519,7 +762,7 @@ export class GraphDisplayManager {
     this._lastWeekRequestedAt = undefined
     this._lastWeekData = payload
 
-    this._plotInstance.setData(this.getGraphData(), !this.isZoomed())
+    this.updatePlotData()
   }
 
   isZoomed () {
@@ -528,6 +771,7 @@ export class GraphDisplayManager {
   }
 
   handleHistoryButtonClick = () => {
+    this.endSharedView()
     this._showHistory = !this._showHistory
 
     this.updateHistoryButton()
@@ -539,15 +783,18 @@ export class GraphDisplayManager {
     this.updateLocalStorage()
     this.syncSeriesVisibility()
 
-    // Reset scales so the Y axis includes or drops the history lines, then put an active zoom back
-    const zoomed = this.isZoomed()
+    // Setting the x scale again re-ranges the Y axis to include or drop the history lines
     const xScale = { min: this._plotInstance.scales.x.min, max: this._plotInstance.scales.x.max }
 
-    this._plotInstance.setData(this.getGraphData())
+    this.withRangeLock(() => {
+      this._plotInstance.setData(this.getGraphData(), false)
 
-    if (zoomed) {
-      this._plotInstance.setScale('x', xScale)
-    }
+      if (this._rangeSeconds) {
+        this.applyRange()
+      } else {
+        this._plotInstance.setScale('x', xScale)
+      }
+    })
   }
 
   updateHistoryButton () {
@@ -617,6 +864,16 @@ export class GraphDisplayManager {
       })
 
       document.getElementById('graph-controls-history').addEventListener('click', this.handleHistoryButtonClick, false)
+
+      const listeners = {
+        'graph-range': this.handleRangeClick,
+        'graph-reset-zoom': this.handleResetZoomClick
+      }
+
+      for (const id in listeners) {
+        const element = document.getElementById(id)
+        if (element) element.addEventListener('click', listeners[id], false)
+      }
     }
 
     if (isLegacyDesign()) {
@@ -642,6 +899,7 @@ export class GraphDisplayManager {
     const serverRegistration = this._app.serverRegistry.getServerRegistration(serverId)
 
     if (serverRegistration.isVisible !== event.target.checked) {
+      this.endSharedView()
       serverRegistration.isVisible = event.target.checked
       this._showOnlyFavorites = false
       this.redraw()
@@ -649,6 +907,8 @@ export class GraphDisplayManager {
   }
 
   toggleServer (serverRegistration) {
+    this.endSharedView()
+
     // Any manual changes automatically disables "Only Favorites" mode
     // Otherwise the auto management might overwrite their manual changes
     this._showOnlyFavorites = false
@@ -681,6 +941,8 @@ export class GraphDisplayManager {
   }
 
   handleShowButtonClick = (event) => {
+    this.endSharedView()
+
     let showType = event.currentTarget.getAttribute('minetrack-show-type')
 
     // Clicking Favourites again leaves that mode and shows every server
@@ -770,6 +1032,13 @@ export class GraphDisplayManager {
     this._lastWeekData = undefined
     this._lastWeekSeries = []
     this._lastWeekRequestedAt = undefined
+    this._focusedId = null
+    this._pendingFocusId = null
+
+    if (this._focusFrame !== undefined) {
+      cancelAnimationFrame(this._focusFrame)
+      this._focusFrame = undefined
+    }
 
     // Fire #clearTimeout if the timeout is currently defined
     if (this._resizeRequestTimeout) {

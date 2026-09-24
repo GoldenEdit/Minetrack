@@ -1,3 +1,5 @@
+import { formatDay } from './util'
+
 export function uPlotTooltipPlugin (onHover) {
   let element
 
@@ -22,6 +24,57 @@ export function uPlotTooltipPlugin (onHover) {
             top: bounds.top + top + window.pageYOffset
           }, idx)
         }
+      }
+    }
+  }
+}
+
+// Drawn on drawClear so the lines sit underneath the series
+export function uPlotDayBoundariesPlugin ({ lineColor, labelColor, fontFamily }) {
+  const MIN_LABEL_SPACING = 90
+
+  return {
+    hooks: {
+      drawClear: u => {
+        const { min, max } = u.scales.x
+        if (min == null || max == null || max <= min) return
+
+        const ratio = devicePixelRatio
+        const { left, top, width, height } = u.bbox
+        const secondsPerPixel = (max - min) / (width / ratio)
+        const showLabels = (24 * 60 * 60) / secondsPerPixel >= MIN_LABEL_SPACING
+
+        const ctx = u.ctx
+        ctx.save()
+        ctx.beginPath()
+        ctx.rect(left, top, width, height)
+        ctx.clip()
+        ctx.lineWidth = ratio
+        ctx.strokeStyle = lineColor
+        ctx.setLineDash([2 * ratio, 3 * ratio])
+        ctx.fillStyle = labelColor
+        ctx.font = `${11 * ratio}px ${fontFamily}`
+        ctx.textAlign = 'left'
+        ctx.textBaseline = 'top'
+
+        // setHours(24) moves to the next local midnight, and stepping by date keeps DST days correct
+        const day = new Date(min * 1000)
+        day.setHours(24, 0, 0, 0)
+
+        for (; day.getTime() / 1000 < max; day.setDate(day.getDate() + 1)) {
+          const x = Math.round(u.valToPos(day.getTime() / 1000, 'x', true)) + 0.5
+
+          ctx.beginPath()
+          ctx.moveTo(x, top)
+          ctx.lineTo(x, top + height)
+          ctx.stroke()
+
+          if (showLabels) {
+            ctx.fillText(formatDay(day.getTime() / 1000), x + 4 * ratio, top + 4 * ratio)
+          }
+        }
+
+        ctx.restore()
       }
     }
   }

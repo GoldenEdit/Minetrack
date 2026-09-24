@@ -113,6 +113,19 @@ export function formatTimestampSeconds (secs) {
   return date.toLocaleTimeString()
 }
 
+// Formatters are built once because these run on every cursor move and every graph paint
+const DAY_OPTIONS = { weekday: 'short', day: 'numeric', month: 'short' }
+const DAY_FORMAT = new Intl.DateTimeFormat(undefined, DAY_OPTIONS)
+const DAY_TIME_FORMAT = new Intl.DateTimeFormat(undefined, { ...DAY_OPTIONS, hour: '2-digit', minute: '2-digit' })
+
+export function formatDay (secs) {
+  return DAY_FORMAT.format(secs * 1000)
+}
+
+export function formatDayTime (secs) {
+  return DAY_TIME_FORMAT.format(secs * 1000)
+}
+
 export function formatDate (secs) {
   const date = new Date(0)
   date.setUTCSeconds(secs)

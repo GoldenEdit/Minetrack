@@ -170,5 +170,4 @@ export class App {
       if (networksLabel) networksLabel.innerText = serverRegistrationCount === 1 ? 'server' : 'servers'
     }
   }
-
 }

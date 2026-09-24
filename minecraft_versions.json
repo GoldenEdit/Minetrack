@@ -161,8 +161,44 @@
 			"protocolId": 766
 		},
 		{
-			"name": "1.21",
+			"name": "1.21.1",
 			"protocolId": 767
+		},
+		{
+			"name": "1.21.3",
+			"protocolId": 768
+		},
+		{
+			"name": "1.21.4",
+			"protocolId": 769
+		},
+		{
+			"name": "1.21.5",
+			"protocolId": 770
+		},
+		{
+			"name": "1.21.6",
+			"protocolId": 771
+		},
+		{
+			"name": "1.21.8",
+			"protocolId": 772
+		},
+		{
+			"name": "1.21.10",
+			"protocolId": 773
+		},
+		{
+			"name": "1.21.11",
+			"protocolId": 774
+		},
+		{
+			"name": "26.1.2",
+			"protocolId": 775
+		},
+		{
+			"name": "26.2",
+			"protocolId": 776
 		}
 	]
 }

@@ -2,7 +2,7 @@ import uPlot from 'uplot'
 
 import { RelativeScale } from './scale'
 
-import { formatNumber, formatTimestampSeconds, formatDayTime, escapeHtml, safeCssColor } from './util'
+import { formatNumber, formatTimestampSeconds, formatDay, formatTime, formatDayTime, escapeHtml, safeCssColor } from './util'
 import { uPlotTooltipPlugin, uPlotRangeSelectPlugin, uPlotDayBoundariesPlugin } from './plugins'
 import { parseSharedView, writeSharedViewToUrl, formatRange } from './share'
 
@@ -44,6 +44,7 @@ export class GraphDisplayManager {
     this._pendingFocusId = null
     this._focusFrame = undefined
     this._sharedView = undefined
+    this._rangeMenuOpen = false
   }
 
   addGraphPoint (timestamp, playerCounts) {
@@ -568,14 +569,16 @@ export class GraphDisplayManager {
     const container = document.getElementById('graph-range')
     if (!container) return
 
+    const list = document.getElementById('graph-range-list')
     const fullRange = this.getFullRange()
     const presets = RANGE_PRESETS.filter(seconds => seconds < fullRange).concat(fullRange)
+    const check = '<svg class="range-menu-check" viewBox="0 0 10 10" width="10" height="10" aria-hidden="true"><path d="M2 5.2 L4.1 7.3 L8 2.8" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="square" stroke-linejoin="miter"/></svg>'
 
-    container.innerHTML = presets.map(seconds =>
-      `<button type="button" class="segment" data-range="${seconds}" aria-pressed="false">${escapeHtml(formatRange(seconds))}</button>`
+    list.innerHTML = presets.map(seconds =>
+      `<button type="button" class="range-menu-option" role="option" data-range="${seconds}" aria-selected="false">${escapeHtml(formatRange(seconds))}${check}</button>`
     ).join('')
 
-    // A single button would have nothing to choose between
+    // A single choice would have nothing to open
     container.hidden = presets.length < 2
   }
 
@@ -584,12 +587,25 @@ export class GraphDisplayManager {
     const isCustomZoom = !this._rangeSeconds
 
     const container = document.getElementById('graph-range')
-    if (container) {
-      container.querySelectorAll('.segment').forEach(button => {
+    const label = document.getElementById('graph-range-label')
+    if (container && label) {
+      container.querySelectorAll('.range-menu-option').forEach(button => {
         const isActive = !isCustomZoom && parseInt(button.getAttribute('data-range')) === this._rangeSeconds
         button.classList.toggle('is-active', isActive)
-        button.setAttribute('aria-pressed', isActive ? 'true' : 'false')
+        button.setAttribute('aria-selected', isActive ? 'true' : 'false')
       })
+
+      if (isCustomZoom) {
+        const { min, max } = this._plotInstance.scales.x
+        const sameDay = new Date(min * 1000).toDateString() === new Date(max * 1000).toDateString()
+        label.textContent = sameDay
+          ? `${formatTime(min)} – ${formatTime(max)}`
+          : `${formatDay(min)} – ${formatDay(max)}`
+        container.querySelector('.range-menu-toggle').title = `${formatDayTime(min)} – ${formatDayTime(max)}`
+      } else {
+        label.textContent = formatRange(this._rangeSeconds)
+        container.querySelector('.range-menu-toggle').removeAttribute('title')
+      }
     }
 
     const resetZoom = document.getElementById('graph-reset-zoom')
@@ -638,8 +654,40 @@ export class GraphDisplayManager {
   }
 
   handleRangeClick = (event) => {
-    const button = event.target.closest('[data-range]')
-    if (button) this.setRange(parseInt(button.getAttribute('data-range')))
+    const option = event.target.closest('[data-range]')
+    if (option) {
+      this.setRange(parseInt(option.getAttribute('data-range')))
+      this.setRangeMenuOpen(false)
+      return
+    }
+
+    if (event.target.closest('.range-menu-toggle')) {
+      this.setRangeMenuOpen(!this._rangeMenuOpen)
+    }
+  }
+
+  setRangeMenuOpen (open) {
+    const menu = document.getElementById('graph-range')
+    const list = document.getElementById('graph-range-list')
+    const toggle = document.getElementById('graph-range-toggle')
+    if (!menu || !list || !toggle) return
+
+    this._rangeMenuOpen = open
+    menu.classList.toggle('is-open', open)
+    list.hidden = !open
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false')
+  }
+
+  handleRangeMenuDismiss = (event) => {
+    if (!this._rangeMenuOpen) return
+
+    if (event.type === 'keydown') {
+      if (event.key === 'Escape') this.setRangeMenuOpen(false)
+      return
+    }
+
+    const menu = document.getElementById('graph-range')
+    if (menu && !menu.contains(event.target)) this.setRangeMenuOpen(false)
   }
 
   handleResetZoomClick = () => {
@@ -890,6 +938,9 @@ export class GraphDisplayManager {
         const element = document.getElementById(id)
         if (element) element.addEventListener('click', listeners[id], false)
       }
+
+      document.addEventListener('click', this.handleRangeMenuDismiss, false)
+      document.addEventListener('keydown', this.handleRangeMenuDismiss, false)
     }
 
     if (isLegacyDesign()) {

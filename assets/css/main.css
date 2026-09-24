@@ -227,19 +227,83 @@ a:hover {
   margin-bottom: 8px;
 }
 
-.segmented-sm {
-  height: 26px;
-}
-
-.segmented-sm .segment {
-  padding: 0 8px;
-  font-size: 12px;
-}
-
 .segmented[hidden],
 .ghost[hidden],
+.range-menu[hidden],
+.range-menu-list[hidden],
 .server-list-controls[hidden] {
   display: none;
+}
+
+.range-menu {
+  position: relative;
+}
+
+.range-menu-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 510;
+}
+
+.range-menu-toggle:hover,
+.range-menu.is-open .range-menu-toggle {
+  color: var(--text);
+  border-color: var(--line-strong);
+}
+
+.range-menu-chevron {
+  display: block;
+}
+
+.range-menu.is-open .range-menu-chevron {
+  transform: rotate(180deg);
+}
+
+.range-menu-list {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 100%;
+  padding: 4px 0;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+
+.range-menu-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  padding: 4px 8px 4px 10px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 510;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.range-menu-option:hover,
+.range-menu-option.is-active {
+  background: var(--surface-3);
+  color: var(--text);
+}
+
+.range-menu-check {
+  visibility: hidden;
+}
+
+.range-menu-option.is-active .range-menu-check {
+  visibility: visible;
 }
 
 .graph-scroll {

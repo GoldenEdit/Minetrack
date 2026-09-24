@@ -70,7 +70,14 @@
 					<div id="big-graph-controls" class="graph-controls">
 						<button type="button" class="ghost graph-controls-show" minetrack-show-type="favorites">Favourites</button>
 						<button type="button" id="graph-controls-history" class="ghost" aria-pressed="true" title="Show each server's graph from this time last week as a dashed line">History</button>
-						<div id="graph-range" class="segmented segmented-sm" role="group" aria-label="Time range" hidden></div>
+						<div id="graph-range" class="range-menu" hidden>
+							<button type="button" id="graph-range-toggle" class="range-menu-toggle" aria-haspopup="listbox" aria-expanded="false" aria-controls="graph-range-list">
+								<svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><circle cx="6" cy="6" r="4.25" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M6 3.5 V6.2 L7.7 7.2" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="square"/></svg>
+								<span id="graph-range-label"></span>
+								<svg class="range-menu-chevron" viewBox="0 0 10 10" width="10" height="10" aria-hidden="true"><path d="M2 3.5 L5 6.5 L8 3.5" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="square" stroke-linejoin="miter"/></svg>
+							</button>
+							<div id="graph-range-list" class="range-menu-list" role="listbox" aria-label="Time range" hidden></div>
+						</div>
 						<button type="button" id="graph-reset-zoom" class="ghost" hidden>Reset zoom</button>
 					</div>
 					<div class="graph-scroll">

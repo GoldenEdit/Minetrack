@@ -326,6 +326,21 @@ footer a:hover {
   padding-right: 65px;
 }
 
+.graph-cursor-dot {
+  position: absolute;
+  z-index: 4;
+  top: 0;
+  left: 0;
+  box-sizing: border-box;
+  display: none;
+  width: 7px;
+  height: 7px;
+  margin: -3.5px 0 0 -3.5px;
+  border: 1.5px solid #212021;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
 #big-graph, #big-graph-controls, #big-graph-checkboxes {
     width: 90%;
 }

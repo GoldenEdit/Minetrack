@@ -346,6 +346,32 @@ export class GraphDisplayManager {
     return closestSeriesIndex
   }
 
+  // Sits on the sample the tooltip is reading, so the highlighted row has a point on the graph
+  showCursorDot (seriesIndex, idx) {
+    const over = this._plotInstance.root.querySelector('.over')
+    if (!this._cursorDot || this._cursorDot.parentNode !== over) {
+      this._cursorDot = document.createElement('div')
+      this._cursorDot.className = 'graph-cursor-dot'
+      over.appendChild(this._cursorDot)
+    }
+
+    const value = seriesIndex > 0 ? this._plotInstance.data[seriesIndex][idx] : null
+    if (typeof value !== 'number') {
+      this.hideCursorDot()
+      return
+    }
+
+    const x = this._plotInstance.valToPos(this._plotInstance.data[0][idx], 'x')
+    const y = this._plotInstance.valToPos(value, 'y')
+    this._cursorDot.style.display = 'block'
+    this._cursorDot.style.transform = `translate(${x}px, ${y}px)`
+    this._cursorDot.style.background = this._plotInstance.series[seriesIndex].stroke
+  }
+
+  hideCursorDot () {
+    if (this._cursorDot) this._cursorDot.style.display = 'none'
+  }
+
   buildPlotInstance (timestamps, data) {
     // Lazy load settings from localStorage, if any and if enabled
     if (!this._hasLoadedSettings) {
@@ -427,8 +453,10 @@ export class GraphDisplayManager {
               : this.formatTooltip(idx, closestSeriesIndex)
 
             this._app.tooltip.set(pos.left, pos.top, legacy ? 10 : 12, legacy ? 10 : 12, text)
+            this.showCursorDot(closestSeriesIndex, idx)
           } else {
             this._app.tooltip.hide()
+            this.hideCursorDot()
           }
         }),
         ...(legacy

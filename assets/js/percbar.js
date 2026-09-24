@@ -7,6 +7,8 @@ export class PercentageBar {
   }
 
   redraw = () => {
+    if (!this._parent) return
+
     const serverRegistrations = this._app.serverRegistry.getServerRegistrations().sort(function (a, b) {
       return a.playerCount - b.playerCount
     })
@@ -69,6 +71,8 @@ export class PercentageBar {
   }
 
   reset () {
+    if (!this._parent) return
+
     // Reset modified DOM elements
     this._parent.innerHTML = ''
   }

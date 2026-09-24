@@ -2,10 +2,11 @@ import uPlot from 'uplot'
 
 import { RelativeScale } from './scale'
 
-import { formatNumber, formatTimestampSeconds } from './util'
+import { formatNumber, formatTimestampSeconds, escapeHtml, safeCssColor } from './util'
 import { uPlotTooltipPlugin } from './plugins'
 
-import { FAVORITE_SERVERS_STORAGE_KEY } from './favorites'
+import { FAVORITE_SERVERS_STORAGE_KEY, compareFavoriteFirst } from './favorites'
+import { isLegacyDesign } from './design'
 
 const HIDDEN_SERVERS_STORAGE_KEY = 'minetrack_hidden_servers'
 const SHOW_FAVORITES_STORAGE_KEY = 'minetrack_show_favorites'
@@ -152,9 +153,22 @@ export class GraphDisplayManager {
   }
 
   getPlotSize () {
+    if (isLegacyDesign()) {
+      return {
+        width: Math.max(window.innerWidth, 800) * 0.9,
+        height: 400
+      }
+    }
+
+    const scroller = document.querySelector('.graph-scroll')
+    const available = scroller ? scroller.clientWidth : 0
+    const narrow = window.innerWidth < 768
+    const fallback = Math.min(1048, window.innerWidth - 32)
+    const width = narrow ? Math.max(available || 0, 720) : (available || fallback)
+
     return {
-      width: Math.max(window.innerWidth, 800) * 0.9,
-      height: 400
+      width: Math.max(width, 320),
+      height: narrow ? 220 : 300
     }
   }
 
@@ -258,10 +272,12 @@ export class GraphDisplayManager {
     this._graphTimestamps = timestamps
     this._graphData = data
 
+    const legacy = isLegacyDesign()
+
     const series = this._app.serverRegistry.getServerRegistrations().map(serverRegistration => {
       return {
-        stroke: serverRegistration.data.color,
-        width: 2,
+        stroke: safeCssColor(serverRegistration.data.color),
+        width: legacy ? 2 : 1.5,
         value: (_, raw) => `${formatNumber(raw)} Players`,
         show: serverRegistration.isVisible,
         spanGaps: true,
@@ -274,9 +290,9 @@ export class GraphDisplayManager {
     // Each server has a dashed history series, ordered after all live series (see #getLastWeekSeriesIndex)
     for (const serverRegistration of this._app.serverRegistry.getServerRegistrations()) {
       series.push({
-        stroke: serverRegistration.data.color,
-        width: 1.5,
-        dash: [6, 5],
+        stroke: safeCssColor(serverRegistration.data.color),
+        width: legacy ? 1.5 : 1,
+        dash: legacy ? [6, 5] : [4, 4],
         show: serverRegistration.isVisible && this._showHistory,
         spanGaps: true,
         points: {
@@ -287,6 +303,11 @@ export class GraphDisplayManager {
 
     const tickCount = 10
     const maxFactor = 4
+    const splitYAxis = () => {
+      const visibleGraphData = this.getVisibleGraphData()
+      const { scaledMax, scale } = RelativeScale.scaleMatrix(visibleGraphData, tickCount, maxFactor)
+      return RelativeScale.generateTicks(0, scaledMax, scale)
+    }
 
     // eslint-disable-next-line new-cap
     this._plotInstance = new uPlot({
@@ -295,81 +316,84 @@ export class GraphDisplayManager {
           if (pos) {
             const closestSeriesIndex = this.getClosestPlotSeriesIndex(idx)
 
-            const text = this._app.serverRegistry.getServerRegistrations()
-              .filter(serverRegistration => serverRegistration.isVisible)
-              .sort((a, b) => {
-                if (a.isFavorite !== b.isFavorite) {
-                  return a.isFavorite ? -1 : 1
-                } else {
-                  return a.data.name.localeCompare(b.data.name)
-                }
-              })
-              .map(serverRegistration => {
-                const point = this.getGraphDataPoint(serverRegistration.serverId, idx)
+            const text = legacy
+              ? this.formatLegacyTooltip(idx, closestSeriesIndex)
+              : this.formatTooltip(idx, closestSeriesIndex)
 
-                const lastWeekSeriesIndex = this.getLastWeekSeriesIndex(serverRegistration.serverId)
-
-                let serverName = serverRegistration.data.name
-                if (closestSeriesIndex === serverRegistration.getGraphDataIndex() || closestSeriesIndex === lastWeekSeriesIndex) {
-                  serverName = `<strong>${serverName}</strong>`
-                }
-                if (serverRegistration.isFavorite) {
-                  serverName = `<span class="${this._app.favoritesManager.getIconClass(true)}"></span> ${serverName}`
-                }
-
-                let text = `${serverName}: ${formatNumber(point)}`
-
-                if (this._showHistory) {
-                  const lastWeekPoint = this._lastWeekSeries[serverRegistration.serverId][idx]
-
-                  if (typeof lastWeekPoint === 'number') {
-                    text += ` (${formatNumber(lastWeekPoint)} last week)`
-                  }
-                }
-
-                return text
-              }).join('<br>') + `<br><br><strong>${formatTimestampSeconds(this._graphTimestamps[idx])}</strong>`
-
-            this._app.tooltip.set(pos.left, pos.top, 10, 10, text)
+            this._app.tooltip.set(pos.left, pos.top, legacy ? 10 : 12, legacy ? 10 : 12, text)
           } else {
             this._app.tooltip.hide()
           }
         })
       ],
       ...this.getPlotSize(),
-      cursor: {
-        y: false
-      },
+      cursor: legacy
+        ? { y: false }
+        : {
+            drag: {
+              y: false
+            },
+            points: {
+              show: false
+            }
+          },
       series: [
         {
         },
         ...series
       ],
-      axes: [
-        {
-          font: '14px "Open Sans", sans-serif',
-          stroke: '#FFF',
-          grid: {
-            show: false
-          },
-          space: 60
-        },
-        {
-          font: '14px "Open Sans", sans-serif',
-          stroke: '#FFF',
-          size: 65,
-          grid: {
-            stroke: '#333',
-            width: 1
-          },
-          split: () => {
-            const visibleGraphData = this.getVisibleGraphData()
-            const { scaledMax, scale } = RelativeScale.scaleMatrix(visibleGraphData, tickCount, maxFactor)
-            const ticks = RelativeScale.generateTicks(0, scaledMax, scale)
-            return ticks
-          }
-        }
-      ],
+      axes: legacy
+        ? [
+            {
+              font: '14px "Open Sans", sans-serif',
+              stroke: '#FFF',
+              grid: {
+                show: false
+              },
+              space: 60
+            },
+            {
+              font: '14px "Open Sans", sans-serif',
+              stroke: '#FFF',
+              size: 65,
+              grid: {
+                stroke: '#333',
+                width: 1
+              },
+              split: splitYAxis
+            }
+          ]
+        : [
+            {
+              font: '11px "JetBrains Mono", ui-monospace, monospace',
+              stroke: '#62666d',
+              grid: {
+                show: false
+              },
+              ticks: {
+                stroke: '#23252a',
+                width: 1,
+                size: 4
+              },
+              space: 72
+            },
+            {
+              font: '11px "JetBrains Mono", ui-monospace, monospace',
+              stroke: '#62666d',
+              size: 56,
+              ticks: {
+                stroke: '#23252a',
+                width: 1,
+                size: 4
+              },
+              values: (_self, ticks) => ticks.map(raw => formatNumber(raw)),
+              grid: {
+                stroke: '#23252a',
+                width: 1
+              },
+              split: splitYAxis
+            }
+          ],
       scales: {
         y: {
           auto: false,
@@ -385,14 +409,78 @@ export class GraphDisplayManager {
       }
     }, this.getGraphData(), document.getElementById('big-graph'))
 
-    // Show the settings-toggle element
-    document.getElementById('settings-toggle').style.display = 'inline-block'
+    if (legacy) {
+      const settingsToggle = document.getElementById('settings-toggle')
+      if (settingsToggle) settingsToggle.style.display = 'inline-block'
+    } else {
+      document.getElementById('big-graph-controls').style.display = 'flex'
+
+      for (const serverRegistration of this._app.serverRegistry.getServerRegistrations()) {
+        serverRegistration.updateSeriesVisibility()
+      }
+
+      this.updateControls()
+    }
 
     this.updateHistoryButton()
 
     if (this._showHistory) {
       this.refreshLastWeekGraphIfNeeded(this._graphTimestamps[this._graphTimestamps.length - 1])
     }
+  }
+
+  getTooltipServers () {
+    return this._app.serverRegistry.getServerRegistrations()
+      .filter(serverRegistration => serverRegistration.isVisible)
+      .sort((a, b) => compareFavoriteFirst(a, b) || a.data.name.localeCompare(b.data.name))
+  }
+
+  formatTooltip (idx, closestSeriesIndex) {
+    const rows = this.getTooltipServers()
+      .map(serverRegistration => {
+        const point = this.getGraphDataPoint(serverRegistration.serverId, idx)
+        const lastWeekSeriesIndex = this.getLastWeekSeriesIndex(serverRegistration.serverId)
+        const isActive = closestSeriesIndex === serverRegistration.getGraphDataIndex() || closestSeriesIndex === lastWeekSeriesIndex
+
+        let previous = ''
+        if (this._showHistory) {
+          const lastWeekPoint = this._lastWeekSeries[serverRegistration.serverId][idx]
+          if (typeof lastWeekPoint === 'number') {
+            previous = `<span class="tip-prev">${formatNumber(lastWeekPoint)}</span>`
+          }
+        }
+
+        return `<div class="tip-row${isActive ? ' is-active' : ''}"><span class="tip-dot" style="background:${safeCssColor(serverRegistration.data.color)}"></span><span class="tip-name">${escapeHtml(serverRegistration.data.name)}</span><span class="tip-count">${formatNumber(point)}${previous}</span></div>`
+      }).join('')
+
+    return `<div class="tip-time">${escapeHtml(formatTimestampSeconds(this._graphTimestamps[idx]))}</div>${rows}`
+  }
+
+  formatLegacyTooltip (idx, closestSeriesIndex) {
+    return this.getTooltipServers()
+      .map(serverRegistration => {
+        const point = this.getGraphDataPoint(serverRegistration.serverId, idx)
+        const lastWeekSeriesIndex = this.getLastWeekSeriesIndex(serverRegistration.serverId)
+
+        let serverName = escapeHtml(serverRegistration.data.name)
+        if (closestSeriesIndex === serverRegistration.getGraphDataIndex() || closestSeriesIndex === lastWeekSeriesIndex) {
+          serverName = `<strong>${serverName}</strong>`
+        }
+        if (serverRegistration.isFavorite) {
+          serverName = `<span class="${this._app.favoritesManager.getIconClass(true)}"></span> ${serverName}`
+        }
+
+        let text = `${serverName}: ${formatNumber(point)}`
+
+        if (this._showHistory) {
+          const lastWeekPoint = this._lastWeekSeries[serverRegistration.serverId][idx]
+          if (typeof lastWeekPoint === 'number') {
+            text += ` (${formatNumber(lastWeekPoint)} last week)`
+          }
+        }
+
+        return text
+      }).join('<br>') + `<br><br><strong>${escapeHtml(formatTimestampSeconds(this._graphTimestamps[idx]))}</strong>`
   }
 
   refreshLastWeekGraphIfNeeded (timestamp) {
@@ -432,7 +520,8 @@ export class GraphDisplayManager {
       this.refreshLastWeekGraphIfNeeded(this._graphTimestamps[this._graphTimestamps.length - 1])
     }
 
-    this.redraw()
+    this.updateLocalStorage()
+    this.syncSeriesVisibility()
 
     // Reset scales so the Y axis includes or drops the history lines, then put an active zoom back
     const zoomed = this.isZoomed()
@@ -446,20 +535,27 @@ export class GraphDisplayManager {
   }
 
   updateHistoryButton () {
-    document.getElementById('graph-controls-history').classList.toggle('graph-controls-history-off', !this._showHistory)
+    const button = document.getElementById('graph-controls-history')
+    if (!button) return
+
+    button.classList.toggle('graph-controls-history-off', !this._showHistory)
+    button.classList.toggle('is-active', this._showHistory)
+    button.setAttribute('aria-pressed', this._showHistory ? 'true' : 'false')
+  }
+
+  syncSeriesVisibility () {
+    for (const serverRegistration of this._app.serverRegistry.getServerRegistrations()) {
+      this._plotInstance.series[serverRegistration.getGraphDataIndex()].show = serverRegistration.isVisible
+      this._plotInstance.series[this.getLastWeekSeriesIndex(serverRegistration.serverId)].show = serverRegistration.isVisible && this._showHistory
+      serverRegistration.updateSeriesVisibility()
+    }
   }
 
   redraw = () => {
     // Use drawing as a hint to update settings
     // This may cause unnessecary localStorage updates, but its a rare and harmless outcome
     this.updateLocalStorage()
-
-    // Copy application state into the series data used by uPlot
-    for (const serverRegistration of this._app.serverRegistry.getServerRegistrations()) {
-      this._plotInstance.series[serverRegistration.getGraphDataIndex()].show = serverRegistration.isVisible
-      this._plotInstance.series[this.getLastWeekSeriesIndex(serverRegistration.serverId)].show = serverRegistration.isVisible && this._showHistory
-    }
-
+    this.syncSeriesVisibility()
     this._plotInstance.redraw()
   }
 
@@ -495,7 +591,10 @@ export class GraphDisplayManager {
       this._initEventListenersOnce = true
 
       // These listeners should only be init once since they attach to persistent elements
-      document.getElementById('settings-toggle').addEventListener('click', this.handleSettingsToggle, false)
+      const settingsToggle = document.getElementById('settings-toggle')
+      if (settingsToggle) {
+        settingsToggle.addEventListener('click', this.handleSettingsToggle, false)
+      }
 
       document.querySelectorAll('.graph-controls-show').forEach((element) => {
         element.addEventListener('click', this.handleShowButtonClick, false)
@@ -504,10 +603,22 @@ export class GraphDisplayManager {
       document.getElementById('graph-controls-history').addEventListener('click', this.handleHistoryButtonClick, false)
     }
 
-    // These listeners should be bound each #initEventListeners call since they are for newly created elements
-    document.querySelectorAll('.graph-control').forEach((element) => {
-      element.addEventListener('click', this.handleServerButtonClick, false)
-    })
+    if (isLegacyDesign()) {
+      document.querySelectorAll('.graph-control').forEach((element) => {
+        element.addEventListener('click', this.handleServerButtonClick, false)
+      })
+    }
+  }
+
+  handleSettingsToggle = () => {
+    const element = document.getElementById('big-graph-controls-drawer')
+    if (!element) return
+
+    if (element.style.display !== 'block') {
+      element.style.display = 'block'
+    } else {
+      element.style.display = 'none'
+    }
   }
 
   handleServerButtonClick = (event) => {
@@ -516,17 +627,31 @@ export class GraphDisplayManager {
 
     if (serverRegistration.isVisible !== event.target.checked) {
       serverRegistration.isVisible = event.target.checked
-
-      // Any manual changes automatically disables "Only Favorites" mode
-      // Otherwise the auto management might overwrite their manual changes
       this._showOnlyFavorites = false
-
       this.redraw()
     }
   }
 
+  toggleServer (serverRegistration) {
+    serverRegistration.isVisible = !serverRegistration.isVisible
+
+    // Any manual changes automatically disables "Only Favorites" mode
+    // Otherwise the auto management might overwrite their manual changes
+    this._showOnlyFavorites = false
+    serverRegistration.updateSeriesVisibility()
+
+    if (!this._plotInstance) {
+      this.updateLocalStorage()
+      this.updateControls()
+      return
+    }
+
+    this.redraw()
+    this.updateControls()
+  }
+
   handleShowButtonClick = (event) => {
-    const showType = event.target.getAttribute('minetrack-show-type')
+    const showType = event.currentTarget.getAttribute('minetrack-show-type')
 
     // If set to "Only Favorites", set internal state so that
     // visible graphData is automatically updating when a ServerRegistration's #isVisible changes
@@ -553,18 +678,9 @@ export class GraphDisplayManager {
 
     if (redraw) {
       this.redraw()
-      this.updateCheckboxes()
     }
-  }
 
-  handleSettingsToggle = () => {
-    const element = document.getElementById('big-graph-controls-drawer')
-
-    if (element.style.display !== 'block') {
-      element.style.display = 'block'
-    } else {
-      element.style.display = 'none'
-    }
+    this.updateControls()
   }
 
   handleServerIsFavoriteUpdate = (serverRegistration) => {
@@ -573,17 +689,30 @@ export class GraphDisplayManager {
     if (this._showOnlyFavorites && serverRegistration.isVisible !== serverRegistration.isFavorite) {
       serverRegistration.isVisible = serverRegistration.isFavorite
 
-      this.redraw()
-      this.updateCheckboxes()
+      if (this._plotInstance) {
+        this.redraw()
+      } else {
+        serverRegistration.updateSeriesVisibility()
+      }
     }
   }
 
-  updateCheckboxes () {
-    document.querySelectorAll('.graph-control').forEach((checkbox) => {
-      const serverId = parseInt(checkbox.getAttribute('minetrack-server-id'))
-      const serverRegistration = this._app.serverRegistry.getServerRegistration(serverId)
+  updateControls () {
+    if (isLegacyDesign()) {
+      document.querySelectorAll('.graph-control').forEach((checkbox) => {
+        const serverId = parseInt(checkbox.getAttribute('minetrack-server-id'))
+        const serverRegistration = this._app.serverRegistry.getServerRegistration(serverId)
+        checkbox.checked = serverRegistration.isVisible
+      })
+      return
+    }
 
-      checkbox.checked = serverRegistration.isVisible
+    document.querySelectorAll('.graph-controls-show').forEach((button) => {
+      const favoritesMode = button.getAttribute('minetrack-show-type') === 'favorites'
+      button.classList.toggle('is-active', favoritesMode && this._showOnlyFavorites)
+      if (favoritesMode) {
+        button.setAttribute('aria-pressed', this._showOnlyFavorites ? 'true' : 'false')
+      }
     })
   }
 
@@ -611,9 +740,13 @@ export class GraphDisplayManager {
     }
 
     // Reset modified DOM structures
-    document.getElementById('big-graph-checkboxes').innerHTML = ''
-    document.getElementById('big-graph-controls').style.display = 'none'
+    const checkboxes = document.getElementById('big-graph-checkboxes')
+    if (checkboxes) checkboxes.innerHTML = ''
 
-    document.getElementById('settings-toggle').style.display = 'none'
+    const controls = document.getElementById('big-graph-controls')
+    if (controls) controls.style.display = 'none'
+
+    const settingsToggle = document.getElementById('settings-toggle')
+    if (settingsToggle) settingsToggle.style.display = 'none'
   }
 }

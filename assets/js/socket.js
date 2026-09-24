@@ -1,3 +1,6 @@
+import { isLegacyDesign } from './design'
+import { escapeHtml } from './util'
+
 export class SocketManager {
   constructor (app) {
     this._app = app
@@ -86,12 +89,10 @@ export class SocketManager {
           // Bulk add playerCounts into graph during #updateHistoryGraph
           if (payload.updateHistoryGraph) {
             this._app.graphDisplayManager.addGraphPoint(payload.timestamp, Object.values(payload.updates).map(update => update.playerCount))
-
-            // Run redraw tasks after handling bulk updates
-            this._app.graphDisplayManager.redraw()
           }
 
-          this._app.percentageBar.redraw()
+          this._app.updateErrorBanner()
+          if (isLegacyDesign()) this._app.percentageBar.redraw()
           this._app.updateGlobalStats()
 
           break
@@ -100,30 +101,29 @@ export class SocketManager {
         case 'historyGraph': {
           this._app.graphDisplayManager.buildPlotInstance(payload.timestamps, payload.graphData)
 
-          // Build checkbox elements for graph controls
-          let lastRowCounter = 0
-          let controlsHTML = ''
+          if (isLegacyDesign()) {
+            let lastRowCounter = 0
+            let controlsHTML = ''
 
-          this._app.serverRegistry.getServerRegistrations()
-            .map(serverRegistration => serverRegistration.data.name)
-            .sort()
-            .forEach(serverName => {
-              const serverRegistration = this._app.serverRegistry.getServerRegistration(serverName)
+            this._app.serverRegistry.getServerRegistrations()
+              .map(serverRegistration => serverRegistration.data.name)
+              .sort()
+              .forEach(serverName => {
+                const serverRegistration = this._app.serverRegistry.getServerRegistration(serverName)
 
-              controlsHTML += `<td><label>
-                <input type="checkbox" class="graph-control" minetrack-server-id="${serverRegistration.serverId}" ${serverRegistration.isVisible ? 'checked' : ''}>
-                ${serverName}
-                </label></td>`
+                controlsHTML += `<td><label>
+                  <input type="checkbox" class="graph-control" minetrack-server-id="${serverRegistration.serverId}" ${serverRegistration.isVisible ? 'checked' : ''}>
+                  ${escapeHtml(serverName)}
+                  </label></td>`
 
-              // Occasionally break table rows using a magic number
-              if (++lastRowCounter % 6 === 0) {
-                controlsHTML += '</tr><tr>'
-              }
-            })
+                if (++lastRowCounter % 6 === 0) {
+                  controlsHTML += '</tr><tr>'
+                }
+              })
 
-          // Apply generated HTML and show controls
-          document.getElementById('big-graph-checkboxes').innerHTML = `<table><tr>${controlsHTML}</tr></table>`
-          document.getElementById('big-graph-controls').style.display = 'block'
+            document.getElementById('big-graph-checkboxes').innerHTML = `<table><tr>${controlsHTML}</tr></table>`
+            document.getElementById('big-graph-controls').style.display = 'block'
+          }
 
           // Bind click event for updating graph data
           this._app.graphDisplayManager.initEventListeners()

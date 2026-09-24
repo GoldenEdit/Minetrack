@@ -19,8 +19,17 @@ export class Tooltip {
       offsetX *= -1
     }
 
-    this._div.style.top = `${y + offsetY}px`
-    this._div.style.left = `${x + offsetX}px`
+    const left = x + offsetX
+    let top = y + offsetY
+    const tooltipHeight = this._div.offsetHeight
+
+    if (top + tooltipHeight + 16 > window.innerHeight + window.pageYOffset) {
+      top = y - tooltipHeight - Math.abs(offsetY)
+    }
+    if (top < window.pageYOffset + 8) top = window.pageYOffset + 8
+
+    this._div.style.top = `${top}px`
+    this._div.style.left = `${left}px`
   }
 
   hide = () => {
@@ -121,4 +130,19 @@ export function formatNumber (x) {
   } else {
     return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')
   }
+}
+
+export function escapeHtml (value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
+export function safeCssColor (color) {
+  if (typeof color === 'string' && /^#[0-9a-fA-F]{3,8}$/.test(color)) {
+    return color
+  }
+  return '#8a8f98'
 }

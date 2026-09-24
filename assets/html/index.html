@@ -1,74 +1,159 @@
 <!DOCTYPE html>
-
-<html>
-
+<html lang="en">
 <head>
-
-	<link rel="stylesheet" href="../css/main.css">
-
-	<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;700&display=swap">
-
-	<link rel="icon" type="image/svg+xml" href="../images/logo.svg">
-
 	<meta charset="UTF-8">
-
-	<script defer type="module" src="../js/main.js"></script>
-
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="theme-color" content="#08090a">
 	<title>Minetrack</title>
-
+	<link rel="icon" type="image/svg+xml" href="../images/logo.svg">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..590&family=JetBrains+Mono:wght@400;500&family=Open+Sans:wght@300;700&display=swap">
+	<link id="css-new" rel="stylesheet" href="../css/main.css">
+	<link id="css-old" rel="stylesheet" href="../css/legacy.css">
+	<script>
+		(function () {
+			var design = 'new'
+			try {
+				if (localStorage.getItem('minetrack_design') === 'old') design = 'old'
+			} catch (e) {
+				// SecurityError when storage is blocked. Stay on the default design.
+			}
+			document.documentElement.setAttribute('data-design', design)
+			var unused = document.getElementById(design === 'old' ? 'css-new' : 'css-old')
+			if (unused) unused.disabled = true
+		})()
+	</script>
+	<script defer type="module" src="../js/main.js"></script>
 </head>
-
 <body>
-
 	<div id="tooltip"></div>
 
-	<div id="status-overlay">
-		<img class="logo-image" src="../images/logo.svg">
-		<h1 class="logo-text">Minetrack</h1>
-		<div id="status-text">Connecting...</div>
-	</div>
-
-	<div id="push">
-
-		<div id="perc-bar"></div>
-
-		<header>
-			<div class="header-possible-row-break column-left">
-				<img class="logo-image" src="../images/logo.svg">
-				<h1 class="logo-text">Minetrack</h1>
-				<p class="logo-status">Counting <span class="global-stat" id="stat_totalPlayers">0</span> players on <span class="global-stat" id="stat_networks">0</span> Minecraft servers.</p>
-			</div>
-
-			<div class="header-possible-row-break column-right">
-				<div id="sort-by" class="header-button header-button-single"><span class="icon-sort-amount-desc"></span> Sort By<br><strong id="sort-by-text">...</strong></div>
-
-				<div id="settings-toggle" class="header-button header-button-single" style="margin-left: 20px;"><span class="icon-gears"></span> Graph Controls</div>
+	<div data-design-root="new">
+		<header class="topbar">
+			<div class="topbar-inner">
+				<div class="brand">Minetrack</div>
+				<div class="live-stats">
+					<span id="stat_totalPlayers" class="mono live-count">0</span>
+					<span class="live-label">online</span>
+					<span class="live-servers"><span id="stat_networks" class="mono">0</span> <span id="stat_networks_label">servers</span></span>
+				</div>
+				<div class="topbar-tools">
+					<div id="sort-by" class="segmented" role="group" aria-label="Sort servers">
+						<button type="button" class="segment is-active" data-sort-index="0" aria-pressed="true">Players</button>
+						<button type="button" class="segment" data-sort-index="1" aria-pressed="false">Record</button>
+						<button type="button" class="segment" data-sort-index="2" aria-pressed="false">Name</button>
+					</div>
+					<input id="server-search" class="search" type="search" placeholder="Search" aria-label="Search servers" autocomplete="off" spellcheck="false">
+				</div>
 			</div>
 		</header>
 
-		<div id="big-graph"></div>
-
-		<div id="big-graph-controls">
-			<div id="big-graph-controls-drawer">
-				<div id="big-graph-checkboxes"></div>
-
-				<span class="graph-controls-setall">
-					<a minetrack-show-type="all" class="button graph-controls-show"><span class="icon-eye"></span> Show All</a>
-					<a minetrack-show-type="none" class="button graph-controls-show"><span class="icon-eye-slash"></span> Hide All</a>
-					<a minetrack-show-type="favorites" class="button graph-controls-show"><span class="icon-star"></span> Only Favorites</a>
-					<a id="graph-controls-history" class="button" title="Show each server's graph from this time last week as a dashed line"><span class="icon-history"></span> Show History</a>
-				</span>
+		<div id="status-overlay">
+			<div class="shell">
+				<div class="sk sk-graph"></div>
+				<div class="sk-list">
+					<div class="sk sk-row"></div>
+					<div class="sk sk-row"></div>
+					<div class="sk sk-row"></div>
+					<div class="sk sk-row"></div>
+					<div class="sk sk-row"></div>
+					<div class="sk sk-row"></div>
+				</div>
+				<p id="status-text">Connecting...</p>
 			</div>
 		</div>
 
-		<div id="server-list"></div>
+		<div id="push">
+			<div class="shell">
+				<section id="graph-panel" class="graph-panel">
+					<div id="big-graph-controls" class="graph-controls">
+						<button type="button" class="ghost graph-controls-show" minetrack-show-type="all">Show all</button>
+						<button type="button" class="ghost graph-controls-show" minetrack-show-type="none">Hide all</button>
+						<button type="button" class="ghost graph-controls-show" minetrack-show-type="favorites">Favourites</button>
+						<button type="button" id="graph-controls-history" class="ghost" aria-pressed="true" title="Show each server's graph from this time last week as a dashed line">History</button>
+					</div>
+					<div class="graph-scroll">
+						<div id="big-graph"></div>
+					</div>
+				</section>
 
+				<section class="server-section">
+					<div id="error-banner" class="error-banner" role="status" hidden></div>
+					<div id="server-list" class="server-list" data-sort="players"></div>
+					<p id="server-empty" class="empty-state" hidden>No servers match</p>
+				</section>
+
+				<footer id="footer">
+					<span class="footer-credit">Kept online by <a href="https://goldenedit.dev" rel="noopener noreferrer" target="_blank">GoldenEdit</a></span>
+					<div class="design-switch" role="group" aria-label="Design">
+						<button type="button" data-design-choice="new">New</button>
+						<button type="button" data-design-choice="old">Old</button>
+					</div>
+				</footer>
+			</div>
+		</div>
 	</div>
 
-	<footer id="footer">
-		Kept online by <a href="https://goldenedit.dev" rel="noopener noreferrer" target="_blank">GoldenEdit</a>
-	</footer>
+	<div data-design-root="old">
+		<div id="status-overlay">
+			<img class="logo-image" src="../images/logo.svg" alt="">
+			<h1 class="logo-text">Minetrack</h1>
+			<div id="status-text">Connecting...</div>
+		</div>
 
+		<div id="push">
+			<div id="perc-bar"></div>
+
+			<header>
+				<div class="header-possible-row-break column-left">
+					<img class="logo-image" src="../images/logo.svg" alt="">
+					<h1 class="logo-text">Minetrack</h1>
+					<p class="logo-status">Counting <span class="global-stat" id="stat_totalPlayers">0</span> players on <span class="global-stat" id="stat_networks">0</span> Minecraft servers.</p>
+				</div>
+
+				<div class="header-possible-row-break column-right">
+					<div id="sort-by" class="header-button header-button-single"><span class="icon-sort-amount-desc"></span> Sort By<br><strong id="sort-by-text">...</strong></div>
+					<div id="settings-toggle" class="header-button header-button-single" style="margin-left: 20px;"><span class="icon-gears"></span> Graph Controls</div>
+				</div>
+			</header>
+
+			<div id="big-graph"></div>
+
+			<div id="big-graph-controls">
+				<div id="big-graph-controls-drawer">
+					<div id="big-graph-checkboxes"></div>
+					<span class="graph-controls-setall">
+						<a minetrack-show-type="all" class="button graph-controls-show"><span class="icon-eye"></span> Show All</a>
+						<a minetrack-show-type="none" class="button graph-controls-show"><span class="icon-eye-slash"></span> Hide All</a>
+						<a minetrack-show-type="favorites" class="button graph-controls-show"><span class="icon-star"></span> Only Favorites</a>
+						<a id="graph-controls-history" class="button" title="Show each server's graph from this time last week as a dashed line"><span class="icon-history"></span> Show History</a>
+					</span>
+				</div>
+			</div>
+
+			<div id="server-list"></div>
+		</div>
+
+		<footer id="footer">
+			<span class="footer-credit">Kept online by <a href="https://goldenedit.dev" rel="noopener noreferrer" target="_blank">GoldenEdit</a></span>
+			<div class="design-switch" role="group" aria-label="Design">
+				<button type="button" data-design-choice="new">New</button>
+				<button type="button" data-design-choice="old">Old</button>
+			</div>
+		</footer>
+	</div>
+
+	<script>
+		(function () {
+			var design = document.documentElement.getAttribute('data-design') || 'new'
+			var roots = document.querySelectorAll('[data-design-root]')
+			for (var i = 0; i < roots.length; i++) {
+				if (roots[i].getAttribute('data-design-root') !== design) {
+					roots[i].parentNode.removeChild(roots[i])
+				}
+			}
+		})()
+	</script>
 </body>
-
 </html>

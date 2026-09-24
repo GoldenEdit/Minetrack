@@ -1,4 +1,12 @@
+import { isLegacyDesign } from './design'
+
 export const FAVORITE_SERVERS_STORAGE_KEY = 'minetrack_favorite_servers'
+
+export function compareFavoriteFirst (a, b) {
+  if (a.isFavorite && !b.isFavorite) return -1
+  if (b.isFavorite && !a.isFavorite) return 1
+  return 0
+}
 
 export class FavoritesManager {
   constructor (app) {
@@ -20,7 +28,7 @@ export class FavoritesManager {
             serverRegistration.isFavorite = true
 
             // Update icon since by default it is unfavorited
-            document.getElementById(`favorite-toggle_${serverRegistration.serverId}`).setAttribute('class', this.getIconClass(serverRegistration.isFavorite))
+            this._syncFavoriteButton(serverRegistration)
           }
         }
       }
@@ -47,7 +55,7 @@ export class FavoritesManager {
     serverRegistration.isFavorite = !serverRegistration.isFavorite
 
     // Update the displayed favorite icon
-    document.getElementById(`favorite-toggle_${serverRegistration.serverId}`).setAttribute('class', this.getIconClass(serverRegistration.isFavorite))
+    this._syncFavoriteButton(serverRegistration)
 
     // Request the app controller instantly re-sort the server listing
     // This handles the favorite sorting logic internally
@@ -59,11 +67,27 @@ export class FavoritesManager {
     this.updateLocalStorage()
   }
 
+  _syncFavoriteButton (serverRegistration) {
+    const element = document.getElementById(`favorite-toggle_${serverRegistration.serverId}`)
+    if (!element) return
+
+    element.setAttribute('class', this.getIconClass(serverRegistration.isFavorite))
+    element.setAttribute('aria-pressed', serverRegistration.isFavorite ? 'true' : 'false')
+  }
+
   getIconClass (isFavorite) {
+    if (isLegacyDesign()) {
+      if (isFavorite) {
+        return 'icon-star server-is-favorite'
+      } else {
+        return 'icon-star-o server-is-not-favorite'
+      }
+    }
+
     if (isFavorite) {
-      return 'icon-star server-is-favorite'
+      return 'favorite-toggle is-favorite'
     } else {
-      return 'icon-star-o server-is-not-favorite'
+      return 'favorite-toggle'
     }
   }
 }

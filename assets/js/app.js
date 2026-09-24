@@ -4,7 +4,8 @@ import { SortController } from './sort'
 import { GraphDisplayManager } from './graph'
 import { PercentageBar } from './percbar'
 import { FavoritesManager } from './favorites'
-import { Tooltip, Caption, formatNumber } from './util'
+import { Tooltip, Caption, formatNumber, escapeHtml } from './util'
+import { bindDesignSwitcher, isLegacyDesign } from './design'
 
 export class App {
   publicConfig
@@ -24,19 +25,35 @@ export class App {
 
   // Called once the DOM is ready and the app can begin setup
   init () {
+    bindDesignSwitcher()
+
+    const search = document.getElementById('server-search')
+    if (search) {
+      search.addEventListener('input', () => {
+        this.serverRegistry.setSearchQuery(search.value)
+      })
+    }
+
     this.socketManager.createWebSocket()
   }
 
   setPageReady (isReady) {
     document.getElementById('push').style.display = isReady ? 'block' : 'none'
-    document.getElementById('footer').style.display = isReady ? 'block' : 'none'
     document.getElementById('status-overlay').style.display = isReady ? 'none' : 'block'
+
+    if (isLegacyDesign()) {
+      const footer = document.getElementById('footer')
+      if (footer) footer.style.display = isReady ? 'block' : 'none'
+    }
   }
 
   setPublicConfig (publicConfig) {
     this.publicConfig = publicConfig
 
     this.serverRegistry.assignServers(publicConfig.servers)
+
+    const graphPanel = document.getElementById('graph-panel')
+    if (graphPanel) graphPanel.hidden = !publicConfig.isGraphVisible
 
     // Start repeating frontend tasks once it has received enough data to be considered active
     // This simplifies management logic at the cost of each task needing to safely handle empty data
@@ -51,7 +68,8 @@ export class App {
 
     // Run a single bulk server sort instead of per-add event since there may be multiple
     this.sortController.show()
-    this.percentageBar.redraw()
+    this.updateErrorBanner()
+    if (isLegacyDesign()) this.percentageBar.redraw()
 
     // The data may not be there to correctly compute values, but run an attempt
     // Otherwise they will be updated by #initTasks
@@ -70,7 +88,7 @@ export class App {
     this.socketManager.reset()
     this.sortController.reset()
     this.graphDisplayManager.reset()
-    this.percentageBar.reset()
+    if (isLegacyDesign()) this.percentageBar.reset()
 
     // Undefine publicConfig, resynced during the connection handshake
     this.publicConfig = undefined
@@ -85,8 +103,16 @@ export class App {
     this._lastServerRegistrationCount = undefined
 
     // Reset modified DOM structures
-    document.getElementById('stat_totalPlayers').innerText = 0
-    document.getElementById('stat_networks').innerText = 0
+    document.getElementById('stat_totalPlayers').innerText = '0'
+    document.getElementById('stat_networks').innerText = '0'
+    const networksLabel = document.getElementById('stat_networks_label')
+    if (networksLabel) networksLabel.innerText = 'servers'
+
+    const banner = document.getElementById('error-banner')
+    if (banner) {
+      banner.hidden = true
+      banner.innerHTML = ''
+    }
 
     this.setPageReady(false)
   }
@@ -147,6 +173,28 @@ export class App {
     if (serverRegistrationCount !== this._lastServerRegistrationCount) {
       this._lastServerRegistrationCount = serverRegistrationCount
       document.getElementById('stat_networks').innerText = serverRegistrationCount
+      const networksLabel = document.getElementById('stat_networks_label')
+      if (networksLabel) networksLabel.innerText = serverRegistrationCount === 1 ? 'server' : 'servers'
     }
+  }
+
+  updateErrorBanner () {
+    const banner = document.getElementById('error-banner')
+    if (!banner) return
+
+    const failed = this.serverRegistry.getServerRegistrations().filter(server => server.isOffline)
+
+    if (failed.length === 0) {
+      banner.hidden = true
+      banner.innerHTML = ''
+      return
+    }
+
+    const items = failed.map(server => {
+      return `<span class="error-banner-item"><span class="error-banner-name">${escapeHtml(server.data.name)}</span> <span class="error-banner-msg">${escapeHtml(server.lastErrorMessage || 'Failed to ping')}</span></span>`
+    }).join('')
+
+    banner.hidden = false
+    banner.innerHTML = `<span class="error-banner-label">Failed to ping</span>${items}`
   }
 }

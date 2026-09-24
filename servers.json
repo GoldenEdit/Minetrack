@@ -114,6 +114,11 @@
 			"name": "ApolloCPvP",
 			"ip": "apollocpvp.org",
 			"type": "PC"
+	},
+	{
+			"name": "ShoreSMP",
+			"ip": "shoresmp.net",
+			"type": "PC"
 	}
 
 ]

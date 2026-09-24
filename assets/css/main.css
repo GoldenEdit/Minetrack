@@ -259,6 +259,17 @@ a:hover {
   min-width: 0;
 }
 
+.server-list-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  padding-top: 8px;
+}
+
+.server-list-controls[hidden] {
+  display: none;
+}
+
 .server {
   display: grid;
   grid-template-columns: 24px minmax(0, 1fr) auto 140px minmax(72px, auto) 28px;

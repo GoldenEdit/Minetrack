@@ -68,8 +68,6 @@
 			<div class="shell">
 				<section id="graph-panel" class="graph-panel">
 					<div id="big-graph-controls" class="graph-controls">
-						<button type="button" class="ghost graph-controls-show" minetrack-show-type="all">Show all</button>
-						<button type="button" class="ghost graph-controls-show" minetrack-show-type="none">Hide all</button>
 						<button type="button" class="ghost graph-controls-show" minetrack-show-type="favorites">Favourites</button>
 						<button type="button" id="graph-controls-history" class="ghost" aria-pressed="true" title="Show each server's graph from this time last week as a dashed line">History</button>
 					</div>
@@ -81,6 +79,10 @@
 				<section class="server-section">
 					<div id="server-list" class="server-list" data-sort="players"></div>
 					<p id="server-empty" class="empty-state" hidden>No servers match</p>
+					<div id="server-list-controls" class="server-list-controls" hidden>
+						<button type="button" class="ghost graph-controls-show" minetrack-show-type="all">Show all</button>
+						<button type="button" class="ghost graph-controls-show" minetrack-show-type="none">Hide all</button>
+					</div>
 				</section>
 
 				<footer id="footer">

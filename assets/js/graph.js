@@ -680,7 +680,12 @@ export class GraphDisplayManager {
   }
 
   handleShowButtonClick = (event) => {
-    const showType = event.currentTarget.getAttribute('minetrack-show-type')
+    let showType = event.currentTarget.getAttribute('minetrack-show-type')
+
+    // Clicking Favourites again leaves that mode and shows every server
+    if (showType === 'favorites' && this._showOnlyFavorites) {
+      showType = 'all'
+    }
 
     // If set to "Only Favorites", set internal state so that
     // visible graphData is automatically updating when a ServerRegistration's #isVisible changes
@@ -708,6 +713,8 @@ export class GraphDisplayManager {
 
     if (redraw) {
       this.redraw()
+    } else {
+      this.updateLocalStorage()
     }
 
     this.updateControls()

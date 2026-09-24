@@ -7,7 +7,9 @@ ADD https://github.com/krallin/tini/releases/download/$TINI_VER/tini /sbin/tini
 RUN chmod +x /sbin/tini
 
 # install sqlite3
-RUN apt-get update                                                   \
+# Bullseye security packages 404; install from the main archive.
+RUN sed -i '/debian-security/d' /etc/apt/sources.list                \
+ && apt-get update                                                   \
  && apt-get install    --quiet --yes --no-install-recommends sqlite3 \
  && apt-get clean      --quiet --yes                                 \
  && apt-get autoremove --quiet --yes                                 \

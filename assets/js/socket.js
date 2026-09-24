@@ -129,6 +129,10 @@ export class SocketManager {
           this._app.graphDisplayManager.initEventListeners()
           break
         }
+
+        case 'lastWeekGraph':
+          this._app.graphDisplayManager.handleLastWeekGraph(payload)
+          break
       }
     }
   }
@@ -171,6 +175,12 @@ export class SocketManager {
       // Send request as a plain text string to avoid the server needing to parse JSON
       // This is mostly to simplify the backend server's need for error handling
       this._webSocket.send('requestHistoryGraph')
+    }
+  }
+
+  sendLastWeekGraphRequest () {
+    if (this._webSocket && this._webSocket.readyState === WebSocket.OPEN) {
+      this._webSocket.send('requestLastWeekGraph')
     }
   }
 }

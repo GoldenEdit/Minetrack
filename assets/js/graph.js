@@ -9,6 +9,10 @@ import { FAVORITE_SERVERS_STORAGE_KEY } from './favorites'
 
 const HIDDEN_SERVERS_STORAGE_KEY = 'minetrack_hidden_servers'
 const SHOW_FAVORITES_STORAGE_KEY = 'minetrack_show_favorites'
+const SHOW_HISTORY_STORAGE_KEY = 'minetrack_show_history'
+
+const LAST_WEEK_REFRESH_MARGIN_SECONDS = 120
+const LAST_WEEK_RETRY_DELAY = 30 * 1000
 
 export class GraphDisplayManager {
   constructor (app) {
@@ -18,6 +22,10 @@ export class GraphDisplayManager {
     this._hasLoadedSettings = false
     this._initEventListenersOnce = false
     this._showOnlyFavorites = false
+    this._showHistory = true
+    this._lastWeekData = undefined
+    this._lastWeekSeries = []
+    this._lastWeekRequestedAt = undefined
   }
 
   addGraphPoint (timestamp, playerCounts) {
@@ -29,10 +37,8 @@ export class GraphDisplayManager {
       return
     }
 
-    // Calculate isZoomed before mutating graphData otherwise the indexed values
-    // are out of date and will always fail when compared to plotScaleX.min/max
-    const plotScaleX = this._plotInstance.scales.x
-    const isZoomed = plotScaleX.min > this._graphTimestamps[0] || plotScaleX.max < this._graphTimestamps[this._graphTimestamps.length - 1]
+    // Read before the new point is pushed, or the comparison against the old ends always fails
+    const isZoomed = this.isZoomed()
 
     this._graphTimestamps.push(timestamp)
 
@@ -54,6 +60,10 @@ export class GraphDisplayManager {
       }
     }
 
+    if (this._showHistory) {
+      this.refreshLastWeekGraphIfNeeded(timestamp)
+    }
+
     // Avoid redrawing the plot when zoomed
     this._plotInstance.setData(this.getGraphData(), !isZoomed)
   }
@@ -64,6 +74,8 @@ export class GraphDisplayManager {
       if (showOnlyFavorites) {
         this._showOnlyFavorites = true
       }
+
+      this._showHistory = localStorage.getItem(SHOW_HISTORY_STORAGE_KEY) !== 'false'
 
       // If only favorites mode is active, use the stored favorite servers data instead
       let serverNames
@@ -113,13 +125,30 @@ export class GraphDisplayManager {
       } else {
         localStorage.removeItem(SHOW_FAVORITES_STORAGE_KEY)
       }
+
+      // History is shown by default, so only store the opt-out
+      if (!this._showHistory) {
+        localStorage.setItem(SHOW_HISTORY_STORAGE_KEY, false)
+      } else {
+        localStorage.removeItem(SHOW_HISTORY_STORAGE_KEY)
+      }
     }
   }
 
   getVisibleGraphData () {
-    return this._app.serverRegistry.getServerRegistrations()
-      .filter(serverRegistration => serverRegistration.isVisible)
-      .map(serverRegistration => this._graphData[serverRegistration.serverId])
+    const visibleGraphData = []
+
+    for (const serverRegistration of this._app.serverRegistry.getServerRegistrations()) {
+      if (serverRegistration.isVisible) {
+        visibleGraphData.push(this._graphData[serverRegistration.serverId])
+
+        if (this._showHistory) {
+          visibleGraphData.push(this._lastWeekSeries[serverRegistration.serverId])
+        }
+      }
+    }
+
+    return visibleGraphData
   }
 
   getPlotSize () {
@@ -130,10 +159,41 @@ export class GraphDisplayManager {
   }
 
   getGraphData () {
+    this._lastWeekSeries = this.buildLastWeekSeries()
+
     return [
       this._graphTimestamps,
-      ...this._graphData
+      ...this._graphData,
+      ...this._lastWeekSeries
     ]
+  }
+
+  // Maps the last week buckets (already shifted forward a week by the backend)
+  // onto the current graph timestamps, since uPlot requires every series to share the X axis
+  buildLastWeekSeries () {
+    if (!this._showHistory || !this._lastWeekData) {
+      return this._graphData.map(() => Array(this._graphTimestamps.length).fill(null))
+    }
+
+    const { bucketStart, bucketSize, graphData } = this._lastWeekData
+
+    return graphData.map(buckets => {
+      const series = Array(this._graphTimestamps.length).fill(null)
+
+      for (let i = 0; i < this._graphTimestamps.length; i++) {
+        const bucket = Math.floor((this._graphTimestamps[i] - bucketStart) / bucketSize)
+
+        if (bucket >= 0 && bucket < buckets.length) {
+          series[i] = buckets[bucket]
+        }
+      }
+
+      return series
+    })
+  }
+
+  getLastWeekSeriesIndex (serverId) {
+    return this._graphData.length + 1 + serverId
   }
 
   getGraphDataPoint (serverId, index) {
@@ -211,6 +271,20 @@ export class GraphDisplayManager {
       }
     })
 
+    // Each server has a dashed history series, ordered after all live series (see #getLastWeekSeriesIndex)
+    for (const serverRegistration of this._app.serverRegistry.getServerRegistrations()) {
+      series.push({
+        stroke: serverRegistration.data.color,
+        width: 1.5,
+        dash: [6, 5],
+        show: serverRegistration.isVisible && this._showHistory,
+        spanGaps: true,
+        points: {
+          show: false
+        }
+      })
+    }
+
     const tickCount = 10
     const maxFactor = 4
 
@@ -233,15 +307,27 @@ export class GraphDisplayManager {
               .map(serverRegistration => {
                 const point = this.getGraphDataPoint(serverRegistration.serverId, idx)
 
+                const lastWeekSeriesIndex = this.getLastWeekSeriesIndex(serverRegistration.serverId)
+
                 let serverName = serverRegistration.data.name
-                if (closestSeriesIndex === serverRegistration.getGraphDataIndex()) {
+                if (closestSeriesIndex === serverRegistration.getGraphDataIndex() || closestSeriesIndex === lastWeekSeriesIndex) {
                   serverName = `<strong>${serverName}</strong>`
                 }
                 if (serverRegistration.isFavorite) {
                   serverName = `<span class="${this._app.favoritesManager.getIconClass(true)}"></span> ${serverName}`
                 }
 
-                return `${serverName}: ${formatNumber(point)}`
+                let text = `${serverName}: ${formatNumber(point)}`
+
+                if (this._showHistory) {
+                  const lastWeekPoint = this._lastWeekSeries[serverRegistration.serverId][idx]
+
+                  if (typeof lastWeekPoint === 'number') {
+                    text += ` (${formatNumber(lastWeekPoint)} last week)`
+                  }
+                }
+
+                return text
               }).join('<br>') + `<br><br><strong>${formatTimestampSeconds(this._graphTimestamps[idx])}</strong>`
 
             this._app.tooltip.set(pos.left, pos.top, 10, 10, text)
@@ -301,6 +387,66 @@ export class GraphDisplayManager {
 
     // Show the settings-toggle element
     document.getElementById('settings-toggle').style.display = 'inline-block'
+
+    this.updateHistoryButton()
+
+    if (this._showHistory) {
+      this.refreshLastWeekGraphIfNeeded(this._graphTimestamps[this._graphTimestamps.length - 1])
+    }
+  }
+
+  refreshLastWeekGraphIfNeeded (timestamp) {
+    if (!this._lastWeekData || timestamp + LAST_WEEK_REFRESH_MARGIN_SECONDS >= this._lastWeekData.coversUntil) {
+      this.requestLastWeekGraph()
+    }
+  }
+
+  requestLastWeekGraph () {
+    // A failed query sends no reply, so retry a request that has gone unanswered
+    const now = Date.now()
+
+    if (!this._lastWeekRequestedAt || now - this._lastWeekRequestedAt >= LAST_WEEK_RETRY_DELAY) {
+      this._lastWeekRequestedAt = now
+      this._app.socketManager.sendLastWeekGraphRequest()
+    }
+  }
+
+  handleLastWeekGraph (payload) {
+    this._lastWeekRequestedAt = undefined
+    this._lastWeekData = payload
+
+    this._plotInstance.setData(this.getGraphData(), !this.isZoomed())
+  }
+
+  isZoomed () {
+    const plotScaleX = this._plotInstance.scales.x
+    return plotScaleX.min > this._graphTimestamps[0] || plotScaleX.max < this._graphTimestamps[this._graphTimestamps.length - 1]
+  }
+
+  handleHistoryButtonClick = () => {
+    this._showHistory = !this._showHistory
+
+    this.updateHistoryButton()
+
+    if (this._showHistory) {
+      this.refreshLastWeekGraphIfNeeded(this._graphTimestamps[this._graphTimestamps.length - 1])
+    }
+
+    this.redraw()
+
+    // Reset scales so the Y axis includes or drops the history lines, then put an active zoom back
+    const zoomed = this.isZoomed()
+    const xScale = { min: this._plotInstance.scales.x.min, max: this._plotInstance.scales.x.max }
+
+    this._plotInstance.setData(this.getGraphData())
+
+    if (zoomed) {
+      this._plotInstance.setScale('x', xScale)
+    }
+  }
+
+  updateHistoryButton () {
+    document.getElementById('graph-controls-history').classList.toggle('graph-controls-history-off', !this._showHistory)
   }
 
   redraw = () => {
@@ -311,6 +457,7 @@ export class GraphDisplayManager {
     // Copy application state into the series data used by uPlot
     for (const serverRegistration of this._app.serverRegistry.getServerRegistrations()) {
       this._plotInstance.series[serverRegistration.getGraphDataIndex()].show = serverRegistration.isVisible
+      this._plotInstance.series[this.getLastWeekSeriesIndex(serverRegistration.serverId)].show = serverRegistration.isVisible && this._showHistory
     }
 
     this._plotInstance.redraw()
@@ -353,6 +500,8 @@ export class GraphDisplayManager {
       document.querySelectorAll('.graph-controls-show').forEach((element) => {
         element.addEventListener('click', this.handleShowButtonClick, false)
       })
+
+      document.getElementById('graph-controls-history').addEventListener('click', this.handleHistoryButtonClick, false)
     }
 
     // These listeners should be bound each #initEventListeners call since they are for newly created elements
@@ -449,6 +598,10 @@ export class GraphDisplayManager {
     this._graphTimestamps = []
     this._graphData = []
     this._hasLoadedSettings = false
+
+    this._lastWeekData = undefined
+    this._lastWeekSeries = []
+    this._lastWeekRequestedAt = undefined
 
     // Fire #clearTimeout if the timeout is currently defined
     if (this._resizeRequestTimeout) {

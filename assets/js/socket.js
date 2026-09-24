@@ -91,7 +91,6 @@ export class SocketManager {
             this._app.graphDisplayManager.addGraphPoint(payload.timestamp, Object.values(payload.updates).map(update => update.playerCount))
           }
 
-          this._app.updateErrorBanner()
           if (isLegacyDesign()) this._app.percentageBar.redraw()
           this._app.updateGlobalStats()
 

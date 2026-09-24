@@ -456,28 +456,6 @@ a:hover {
 }
 
 /* States */
-.error-banner {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 16px;
-  align-items: baseline;
-  margin-bottom: 8px;
-  padding: 8px 16px;
-  background: var(--surface-1);
-  border: 1px solid var(--line-strong);
-  border-radius: 8px;
-  color: var(--text-secondary);
-}
-
-.error-banner-label {
-  color: var(--text);
-  font-weight: 510;
-}
-
-.error-banner-msg {
-  color: var(--text-muted);
-}
-
 .empty-state {
   padding: 48px 16px;
   text-align: center;

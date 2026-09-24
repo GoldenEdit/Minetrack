@@ -121,7 +121,6 @@ export class ServerRegistration {
   isVisible = true
   isFavorite = false
   isOffline = false
-  lastErrorMessage
   rankIndex
   lastRecordData
   lastPeakData
@@ -414,7 +413,6 @@ export class ServerRegistration {
     const isOffline = !isWaiting && (!!ping.error || typeof ping.playerCount !== 'number')
 
     this.isOffline = isOffline
-    this.lastErrorMessage = isOffline ? ((ping.error && ping.error.message) || 'Failed to ping') : undefined
 
     if (row) {
       row.classList.toggle('is-offline', isOffline)

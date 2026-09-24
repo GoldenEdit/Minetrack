@@ -4,7 +4,7 @@ import { SortController } from './sort'
 import { GraphDisplayManager } from './graph'
 import { PercentageBar } from './percbar'
 import { FavoritesManager } from './favorites'
-import { Tooltip, Caption, formatNumber, escapeHtml } from './util'
+import { Tooltip, Caption, formatNumber } from './util'
 import { bindDesignSwitcher, isLegacyDesign } from './design'
 
 export class App {
@@ -68,7 +68,6 @@ export class App {
 
     // Run a single bulk server sort instead of per-add event since there may be multiple
     this.sortController.show()
-    this.updateErrorBanner()
     if (isLegacyDesign()) this.percentageBar.redraw()
 
     // The data may not be there to correctly compute values, but run an attempt
@@ -107,12 +106,6 @@ export class App {
     document.getElementById('stat_networks').innerText = '0'
     const networksLabel = document.getElementById('stat_networks_label')
     if (networksLabel) networksLabel.innerText = 'servers'
-
-    const banner = document.getElementById('error-banner')
-    if (banner) {
-      banner.hidden = true
-      banner.innerHTML = ''
-    }
 
     this.setPageReady(false)
   }
@@ -178,23 +171,4 @@ export class App {
     }
   }
 
-  updateErrorBanner () {
-    const banner = document.getElementById('error-banner')
-    if (!banner) return
-
-    const failed = this.serverRegistry.getServerRegistrations().filter(server => server.isOffline)
-
-    if (failed.length === 0) {
-      banner.hidden = true
-      banner.innerHTML = ''
-      return
-    }
-
-    const items = failed.map(server => {
-      return `<span class="error-banner-item"><span class="error-banner-name">${escapeHtml(server.data.name)}</span> <span class="error-banner-msg">${escapeHtml(server.lastErrorMessage || 'Failed to ping')}</span></span>`
-    }).join('')
-
-    banner.hidden = false
-    banner.innerHTML = `<span class="error-banner-label">Failed to ping</span>${items}`
-  }
 }

@@ -19,6 +19,7 @@ const LAST_WEEK_RETRY_DELAY = 30 * 1000
 const HOUR = 60 * 60
 const DAY = 24 * HOUR
 const RANGE_PRESETS = [HOUR, 6 * HOUR, DAY, 3 * DAY, 7 * DAY, 14 * DAY]
+const DEFAULT_RANGE = 3 * DAY
 const UNFOCUSED_ALPHA = 0.15
 const LINE_WIDTH = 1.5
 const FOCUSED_LINE_WIDTH = 2.5
@@ -179,12 +180,12 @@ export class GraphDisplayManager {
           max: Math.min(view.to, last)
         })
       })
-      this._rangeSeconds = this.isZoomed() ? 0 : this.getFullRange()
+      this._rangeSeconds = this.isZoomed() ? 0 : this.getDefaultRange()
       this.updateRangeControls()
     } else {
-      // Keeps the chosen preset across a reconnect, where a manual zoom falls back to the full range.
+      // Keeps the chosen preset across a reconnect, where a manual zoom falls back to the default.
       // Old links can also point at a window that has already scrolled out of the graph.
-      this.setRange(this._rangeSeconds || this.getFullRange())
+      this.setRange(this._rangeSeconds || this.getDefaultRange())
     }
   }
 
@@ -549,7 +550,17 @@ export class GraphDisplayManager {
   }
 
   getFullRange () {
-    return this._app.publicConfig.graphDuration
+    const configured = this._app.publicConfig.graphDuration
+    if (configured > 0) return configured
+
+    // A backend from before this field existed only has the timestamps it sent
+    const span = this._graphTimestamps[this._graphTimestamps.length - 1] - this._graphTimestamps[0]
+    return span > 0 ? span : DEFAULT_RANGE
+  }
+
+  // Never longer than the data the graph actually holds
+  getDefaultRange () {
+    return Math.min(DEFAULT_RANGE, this.getFullRange())
   }
 
   // Presets come from the configured graph length, and one longer than the data collected so far just shows all of it
@@ -617,8 +628,13 @@ export class GraphDisplayManager {
   handleScaleChange = (u, key) => {
     if (key !== 'x' || this._lockRange) return
 
-    this._rangeSeconds = this.isZoomed() ? 0 : this.getFullRange()
-    this.updateRangeControls()
+    if (this.isZoomed()) {
+      this._rangeSeconds = 0
+      this.updateRangeControls()
+    } else {
+      // A double click resets to every stored point, so put the default window back
+      this.setRange(this.getDefaultRange())
+    }
   }
 
   handleRangeClick = (event) => {
@@ -627,7 +643,7 @@ export class GraphDisplayManager {
   }
 
   handleResetZoomClick = () => {
-    this.setRange(this.getFullRange())
+    this.setRange(this.getDefaultRange())
   }
 
   // Dims every other server so the hovered row's live and history lines stand out
@@ -673,11 +689,11 @@ export class GraphDisplayManager {
       view.servers = visible.map(serverRegistration => serverRegistration.data.name)
     }
 
-    // The full range is the default, so it stays out of the address bar
+    // The default window stays out of the address bar
     if (!this._rangeSeconds) {
       view.from = Math.floor(this._plotInstance.scales.x.min)
       view.to = Math.ceil(this._plotInstance.scales.x.max)
-    } else if (this._rangeSeconds !== this.getFullRange()) {
+    } else if (this._rangeSeconds !== this.getDefaultRange()) {
       view.range = this._rangeSeconds
     }
 

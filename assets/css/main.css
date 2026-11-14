@@ -737,7 +737,8 @@ body.has-compare-dock .shell {
 }
 
 .server:hover .server-spark,
-.server:focus-visible .server-spark {
+.server:focus-visible .server-spark,
+.server[aria-pressed="true"] .server-spark {
   opacity: 1;
 }
 
@@ -829,6 +830,28 @@ body.has-compare-dock .shell {
 
 .server.is-waiting .player-count {
   color: var(--text-tertiary);
+}
+
+/* Comparing: selected rows carry their line colour, the rest step back */
+.server[aria-pressed="true"] {
+  background: var(--surface-1);
+  background: color-mix(in srgb, var(--server-color) 7%, var(--canvas));
+  box-shadow: inset 2px 0 0 var(--server-color);
+}
+
+.server[aria-pressed="true"]:hover {
+  background: var(--surface-1);
+  background: color-mix(in srgb, var(--server-color) 11%, var(--canvas));
+}
+
+.server-list.is-comparing .server:not([aria-pressed="true"]) {
+  opacity: 0.45;
+  transition: opacity 0.15s ease;
+}
+
+.server-list.is-comparing .server:not([aria-pressed="true"]):hover,
+.server-list.is-comparing .server:not([aria-pressed="true"]):focus-visible {
+  opacity: 0.8;
 }
 
 /* States */

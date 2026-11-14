@@ -1235,6 +1235,10 @@ export class GraphDisplayManager {
     const compare = document.getElementById('graph-compare')
     if (compare) compare.classList.toggle('is-active', count > 0)
 
+    // Lets the list fade the servers that are not part of the comparison
+    const list = document.getElementById('server-list')
+    if (list) list.classList.toggle('is-comparing', count > 0)
+
     const touch = window.matchMedia && window.matchMedia('(hover: none)').matches
     const label = count === 1 ? 'Showing 1 server' : `Comparing ${count} servers`
 

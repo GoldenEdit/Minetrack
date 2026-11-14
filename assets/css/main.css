@@ -573,10 +573,50 @@ body.has-compare-dock .shell {
 }
 
 .server-list-header .col-rank { text-align: center; }
-.server-list-header .col-server { grid-column: 3; }
+.server-list-header .col-server { grid-column: 3; justify-self: start; }
 .server-list-header .col-players,
-.server-list-header .col-spark,
-.server-list-header .col-record { text-align: right; }
+.server-list-header .col-record { justify-self: end; }
+.server-list-header .col-spark { text-align: right; }
+
+.sort-header {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: var(--text-tertiary);
+}
+
+.sort-header:hover {
+  color: var(--text);
+}
+
+.sort-header.is-active {
+  color: var(--text);
+}
+
+/* Down arrow on the active column; the space is kept on the others so titles do not shift */
+.sort-header::after {
+  content: "";
+  width: 0;
+  height: 0;
+  border-left: 3.5px solid transparent;
+  border-right: 3.5px solid transparent;
+  border-top: 4px solid currentColor;
+  opacity: 0;
+}
+
+.sort-header.is-active::after {
+  opacity: 1;
+}
+
+.sort-header:disabled {
+  color: var(--text-tertiary);
+  opacity: 0.5;
+  cursor: default;
+}
 
 .server {
   column-gap: 8px;
@@ -1171,9 +1211,25 @@ footer {
     height: 220px;
   }
 
+  /* Phones keep the titles as the sort control: Server on the left, Players and Record on the right */
   .server-list-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .server-list-header .col-rank,
+  .server-list-header .col-spark {
     display: none;
   }
+
+  .server-list-header .col-server {
+    order: 1;
+    margin-right: auto;
+  }
+
+  .server-list-header .col-players { order: 2; }
+  .server-list-header .col-record { order: 3; margin-right: 12px; }
 
   /* One line per server on phones: where you rank, how many players, which way it is going */
   .server {

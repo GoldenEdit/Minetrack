@@ -39,11 +39,6 @@
 					<span class="live-servers"><span id="stat_networks" class="mono">0</span> <span id="stat_networks_label">servers</span></span>
 				</div>
 				<div class="topbar-tools">
-					<div id="sort-by" class="segmented" role="group" aria-label="Sort servers">
-						<button type="button" class="segment is-active" data-sort-index="0" aria-pressed="true">Players</button>
-						<button type="button" class="segment" data-sort-index="1" aria-pressed="false">Record</button>
-						<button type="button" class="segment" data-sort-index="2" aria-pressed="false">Name</button>
-					</div>
 					<input id="server-search" class="search" type="search" placeholder="Search  /" aria-label="Search servers by name or address" aria-keyshortcuts="/" title="Search servers (press / to focus, Esc to clear)" autocomplete="off" spellcheck="false">
 				</div>
 			</div>
@@ -98,12 +93,13 @@
 				</section>
 
 				<section id="server-section" class="server-section">
-					<div class="server-list-header" aria-hidden="true">
-						<span class="col-rank">#</span>
-						<span class="col-server">Server</span>
-						<span class="col-players">Players</span>
-						<span class="col-spark" id="server-list-header-spark">Recent</span>
-						<span class="col-record">Record</span>
+					<!-- Column titles double as the sort control -->
+					<div id="sort-by" class="server-list-header" role="group" aria-label="Sort servers">
+						<span class="col-rank" aria-hidden="true">#</span>
+						<button type="button" class="col-server sort-header" data-sort-index="2" aria-pressed="false" title="Sort by name">Server</button>
+						<button type="button" class="col-players sort-header is-active" data-sort-index="0" aria-pressed="true" title="Sort by players online">Players</button>
+						<span class="col-spark" id="server-list-header-spark" aria-hidden="true">Recent</span>
+						<button type="button" class="col-record sort-header" data-sort-index="1" aria-pressed="false" title="Sort by record">Record</button>
 					</div>
 					<div id="server-list" class="server-list" data-sort="players"></div>
 					<div id="server-empty" class="empty-state" role="status" hidden>

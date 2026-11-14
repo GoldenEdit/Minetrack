@@ -86,3 +86,58 @@ test('svg escapes server names', () => {
 function pick (resolved) {
   return [resolved.from, resolved.to]
 }
+
+test('server icons are inlined, with the placeholder as fallback', () => {
+  const png = 'data:image/png;base64,iVBORw0KGgo='
+  assert.strictEqual(GraphImage.getFaviconDataUri({ lastFavicon: png, data: {} }), png)
+
+  const missing = GraphImage.getFaviconDataUri({ data: {} })
+  assert.match(missing, /^data:image\/svg\+xml;base64,/)
+
+  // Remote overrides and paths outside favicons/ can't be inlined
+  assert.strictEqual(GraphImage.getFaviconDataUri({ lastFavicon: png, data: { favicon: 'https://example.com/a.png' } }), missing)
+  assert.strictEqual(GraphImage.getFaviconDataUri({ data: { favicon: '../../package.json' } }), missing)
+
+  const svg = GraphImage.buildSvg({ registrations: [{ data: { name: 'x', color: '#fff' }, lastFavicon: png, graphData: [1, 2] }], isAllServers: false, from: FIRST, to: FIRST + 60 }, [FIRST, FIRST + 60])
+  assert.ok(svg.includes(`href="${png}"`))
+})
+
+test('time zones are validated and used for labels', () => {
+  const { normalizeTimeZone } = require('../lib/share')
+  assert.strictEqual(normalizeTimeZone('Europe/London'), 'Europe/London')
+  assert.strictEqual(normalizeTimeZone('Not/AZone'), 'UTC')
+  assert.strictEqual(normalizeTimeZone('"><script>'), 'UTC')
+  assert.strictEqual(normalizeTimeZone(undefined), 'UTC')
+
+  assert.deepStrictEqual(parseSharedView('?tz=Asia%2FTokyo'), { timeZone: 'Asia/Tokyo' })
+
+  // 2026-11-14 16:13:56 UTC is 01:13 the next day in Tokyo
+  assert.strictEqual(GraphImage.formatWindow(1794672836, 1794683636, 'UTC'), '14 Nov 2026, 16:13 – 19:13 UTC')
+  assert.strictEqual(GraphImage.formatWindow(1794672836, 1794683636, 'Asia/Tokyo'), '15 Nov 2026, 01:13 – 04:13 GMT+9')
+
+  // Day ticks fall on local midnight
+  const ticks = GraphImage.getXTicks(1794672836, 1794672836 + 4 * 86400, 'Asia/Tokyo')
+  assert.ok(ticks.every(tick => /^\d+ \w{3}$/.test(tick.label)))
+  assert.ok(ticks.every(tick => (tick.time + 9 * 3600) % 86400 === 0))
+
+  const query = canonicalQuery(resolveView({ timeZone: 'Asia/Tokyo', history: true }, servers, FIRST, LAST))
+  assert.match(query, /history=1/)
+  assert.match(query, /tz=Asia%2FTokyo/)
+  assert.doesNotMatch(canonicalQuery(resolveView({}, servers, FIRST, LAST)), /tz=|history=/)
+})
+
+test('last week lines are drawn dashed when history is on', () => {
+  const timestamps = [FIRST, FIRST + 60, FIRST + 120]
+  const registration = { serverId: 0, data: { name: 'x', color: '#fff' }, graphData: [1, 2, 3] }
+  const lastWeek = { bucketStart: FIRST, bucketSize: 60, graphData: [[50, null, 70]] }
+  const resolved = { registrations: [registration], isAllServers: false, from: FIRST, to: FIRST + 120 }
+
+  const withHistory = GraphImage.buildSvg({ ...resolved, history: true }, timestamps, lastWeek)
+  assert.ok(withHistory.includes('stroke-dasharray'))
+  assert.ok(withHistory.includes('dashed: last week'))
+  assert.ok(!GraphImage.buildSvg(resolved, timestamps, lastWeek).includes('stroke-dasharray'))
+
+  const { series } = GraphImage.collectSeries(timestamps, resolved, lastWeek)
+  assert.deepStrictEqual(series[0].lastWeekValues, [50, null, 70])
+  assert.strictEqual(series[0].lastWeekPeak, 70)
+})

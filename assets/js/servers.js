@@ -190,7 +190,6 @@ export class ServerRegistration {
     const element = document.getElementById(`chart_${this.serverId}`)
     const width = element.clientWidth || 140
 
-    // eslint-disable-next-line new-cap
     this._plotInstance = new uPlot({
       height: 32,
       width,
@@ -265,7 +264,6 @@ export class ServerRegistration {
   buildLegacyPlotInstance () {
     const tickCount = 4
 
-    // eslint-disable-next-line new-cap
     this._plotInstance = new uPlot({
       plugins: [
         uPlotTooltipPlugin((pos, id) => {

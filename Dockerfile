@@ -1,22 +1,6 @@
-FROM node:16-bullseye
+# ---- build stage: compile the frontend bundle ----
+FROM node:22-trixie-slim AS build
 
-ARG TINI_VER="v0.19.0"
-
-# install tini
-ADD https://github.com/krallin/tini/releases/download/$TINI_VER/tini /sbin/tini
-RUN chmod +x /sbin/tini
-
-# install sqlite3
-# Bullseye security packages 404; install from the main archive.
-RUN sed -i '/debian-security/d' /etc/apt/sources.list                \
- && apt-get update                                                   \
- && apt-get install    --quiet --yes --no-install-recommends sqlite3 \
- && apt-get clean      --quiet --yes                                 \
- && apt-get autoremove --quiet --yes                                 \
- && rm -rf /var/lib/apt/lists/*
-
-# Install dependencies before copying the app so edits to servers.json,
-# HTML, and other source files do not rebuild native modules.
 WORKDIR /usr/src/minetrack
 COPY package.json package-lock.json ./
 RUN npm ci
@@ -24,12 +8,29 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-# run as non root
-# RUN addgroup --gid 10043 --system minetrack \
-#  && adduser  --uid 10042 --system --ingroup minetrack --no-create-home --gecos "" minetrack \
-#  && chown -R minetrack:minetrack /usr/src/minetrack
-# USER minetrack
+# ---- runtime stage: production deps + built assets only ----
+FROM node:22-trixie-slim
+
+# Coolify's HTTP health check runs curl/wget inside the container and the slim
+# image ships neither.
+RUN apt-get update \
+ && apt-get install --quiet --yes --no-install-recommends curl \
+ && apt-get clean --quiet --yes \
+ && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /usr/src/minetrack
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev && npm cache clean --force
+
+COPY . .
+COPY --from=build /usr/src/minetrack/dist ./dist
 
 EXPOSE 8080
 
-ENTRYPOINT ["/sbin/tini", "--", "node", "main.js"]
+# Container-level health check for plain docker/compose; uses node so it has no extra deps.
+HEALTHCHECK --interval=10s --timeout=5s --start-period=15s --retries=3 \
+  CMD ["node", "-e", "fetch('http://127.0.0.1:8080/').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+
+# PID 1 signal handling is provided by `init: true` in docker-compose.yml
+# (or `docker run --init`), so no tini install is needed in the image.
+CMD ["node", "main.js"]

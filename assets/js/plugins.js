@@ -6,7 +6,7 @@ export function uPlotTooltipPlugin (onHover) {
   return {
     hooks: {
       init: u => {
-        element = u.root.querySelector('.over')
+        element = u.root.querySelector('.u-over')
 
         element.onmouseenter = () => onHover()
         element.onmouseleave = () => onHover()
@@ -94,7 +94,7 @@ export function uPlotRangeSelectPlugin (formatTime) {
   return {
     hooks: {
       init: u => {
-        const over = u.root.querySelector('.over')
+        const over = u.root.querySelector('.u-over')
         startLabel = document.createElement('div')
         endLabel = document.createElement('div')
         startLabel.className = 'graph-range-label'
@@ -117,7 +117,7 @@ export function uPlotRangeSelectPlugin (formatTime) {
 
         const startWidth = startLabel.offsetWidth
         const endWidth = endLabel.offsetWidth
-        const plotWidth = u.root.querySelector('.over').clientWidth
+        const plotWidth = u.root.querySelector('.u-over').clientWidth
         const narrow = width < startWidth + endWidth + 8
 
         let startLeft = left

@@ -372,7 +372,7 @@ export class GraphDisplayManager {
 
   // Sits on the sample the tooltip is reading, so the highlighted row has a point on the graph
   showCursorDot (seriesIndex, idx) {
-    const over = this._plotInstance.root.querySelector('.over')
+    const over = this._plotInstance.root.querySelector('.u-over')
     if (!this._cursorDot || this._cursorDot.parentNode !== over) {
       this._cursorDot = document.createElement('div')
       this._cursorDot.className = 'graph-cursor-dot'
@@ -465,7 +465,6 @@ export class GraphDisplayManager {
     // The initial scale is not a user zoom, so keep handleScaleChange from clearing a preset
     this._lockRange = true
 
-    // eslint-disable-next-line new-cap
     this._plotInstance = new uPlot({
       plugins: [
         uPlotTooltipPlugin((pos, idx) => {

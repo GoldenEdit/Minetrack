@@ -68,8 +68,15 @@
 			<div class="shell">
 				<section id="graph-panel" class="graph-panel">
 					<div id="big-graph-controls" class="graph-controls">
-						<button type="button" class="ghost graph-controls-show" minetrack-show-type="favorites">Favourites</button>
-						<button type="button" id="graph-controls-history" class="ghost" aria-pressed="true" title="Show each server's graph from this time last week as a dashed line">Prev. Week</button>
+						<div class="segmented is-compact" role="group" aria-label="Servers on the graph">
+							<button type="button" class="segment graph-controls-show" minetrack-show-type="all" aria-pressed="true">All</button>
+							<button type="button" class="segment graph-controls-show" minetrack-show-type="favorites" aria-pressed="false" title="Only show favourited servers. Star a server in the list to favourite it.">Favourites</button>
+						</div>
+						<button type="button" id="graph-controls-history" class="check-toggle" role="switch" aria-checked="true" title="Overlay each server's players from this time last week as a dashed line">
+							<span class="check-box" aria-hidden="true"><svg viewBox="0 0 10 10" width="10" height="10"><path d="M2 5.2 L4.1 7.2 L8 2.8" fill="none" stroke="currentColor" stroke-width="1.4"/></svg></span>
+							<span class="dash-swatch" aria-hidden="true"></span>
+							<span>Last week</span>
+						</button>
 						<div id="graph-range" class="range-menu" hidden>
 							<button type="button" id="graph-range-toggle" class="range-menu-toggle" aria-haspopup="listbox" aria-expanded="false" aria-controls="graph-range-list">
 								<svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><circle cx="6" cy="6" r="4.25" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M6 3.5 V6.2 L7.7 7.2" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="square"/></svg>
@@ -78,7 +85,7 @@
 							</button>
 							<div id="graph-range-list" class="range-menu-list" hidden></div>
 						</div>
-						<button type="button" id="graph-reset-zoom" class="ghost" hidden>Reset zoom</button>
+						<button type="button" id="graph-reset-zoom" class="outline-button" hidden>Reset zoom</button>
 						<div id="graph-compare" class="graph-compare" aria-live="polite">
 							<span id="graph-compare-text" class="graph-compare-text">Click servers below to compare</span>
 							<button type="button" id="graph-compare-clear" class="ghost graph-controls-show" minetrack-show-type="all" hidden>Clear</button>
@@ -106,10 +113,6 @@
 						<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M12 7.5v9M7.5 12h9" fill="none" stroke="currentColor" stroke-width="1.2"/></svg>
 						<span>Add new server</span>
 					</a>
-					<div id="server-list-controls" class="server-list-controls" hidden>
-						<button type="button" class="ghost graph-controls-show" minetrack-show-type="all">Show all</button>
-						<button type="button" class="ghost graph-controls-show" minetrack-show-type="none">Hide all</button>
-					</div>
 				</section>
 
 				<footer id="footer">

@@ -233,7 +233,8 @@ a:hover {
 .ghost[hidden],
 .range-menu[hidden],
 .range-menu-list[hidden],
-.server-list-controls[hidden] {
+.check-toggle[hidden],
+.outline-button[hidden] {
   display: none;
 }
 
@@ -245,7 +246,7 @@ a:hover {
   display: flex;
   align-items: center;
   gap: 6px;
-  height: 26px;
+  height: 28px;
   padding: 0 8px;
   border: 1px solid var(--line);
   border-radius: 4px;
@@ -383,6 +384,74 @@ a:hover {
   color: var(--text);
 }
 
+/* Graph toolbar controls share one height and a visible border so they read as buttons */
+.segmented.is-compact {
+  height: 28px;
+}
+
+.segmented.is-compact .segment {
+  font-size: 12px;
+}
+
+.check-toggle,
+.outline-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  padding: 0 10px 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 510;
+}
+
+.outline-button {
+  padding: 0 10px;
+}
+
+.check-toggle:hover,
+.outline-button:hover {
+  color: var(--text);
+  border-color: var(--line-strong);
+}
+
+.check-toggle[aria-checked="true"] {
+  color: var(--text);
+}
+
+.check-box {
+  width: 12px;
+  height: 12px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--text-tertiary);
+  border-radius: 2px;
+  color: var(--canvas);
+}
+
+.check-box svg {
+  display: block;
+  visibility: hidden;
+}
+
+.check-toggle[aria-checked="true"] .check-box {
+  background: var(--text);
+  border-color: var(--text);
+}
+
+.check-toggle[aria-checked="true"] .check-box svg {
+  visibility: visible;
+}
+
+/* A sample of the dashed line this toggle adds to the graph */
+.dash-swatch {
+  width: 14px;
+  border-top: 1.5px dashed currentColor;
+  opacity: 0.8;
+}
+
 /* Compare status */
 .graph-compare {
   margin-left: auto;
@@ -426,13 +495,6 @@ a:hover {
 .server-add svg {
   display: block;
   flex-shrink: 0;
-}
-
-.server-list-controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 8px;
-  padding-top: 8px;
 }
 
 .server-list-header,

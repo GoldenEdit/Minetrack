@@ -975,7 +975,12 @@ export class GraphDisplayManager {
 
     button.classList.toggle('graph-controls-history-off', !this._showHistory)
     button.classList.toggle('is-active', this._showHistory)
-    button.setAttribute('aria-pressed', this._showHistory ? 'true' : 'false')
+
+    if (isLegacyDesign()) {
+      button.setAttribute('aria-pressed', this._showHistory ? 'true' : 'false')
+    } else {
+      button.setAttribute('aria-checked', this._showHistory ? 'true' : 'false')
+    }
   }
 
   syncSeriesVisibility () {
@@ -1192,12 +1197,17 @@ export class GraphDisplayManager {
       return
     }
 
-    document.querySelectorAll('.graph-controls-show').forEach((button) => {
-      const favoritesMode = button.getAttribute('minetrack-show-type') === 'favorites'
-      button.classList.toggle('is-active', favoritesMode && this._showOnlyFavorites)
-      if (favoritesMode) {
-        button.setAttribute('aria-pressed', this._showOnlyFavorites ? 'true' : 'false')
-      }
+    // "All" is only lit when every line is on, so comparing servers leaves neither option selected
+    const allVisible = this._app.serverRegistry.getServerRegistrations().every(server => server.isVisible)
+
+    document.querySelectorAll('.segment.graph-controls-show').forEach((button) => {
+      const showType = button.getAttribute('minetrack-show-type')
+      const active = showType === 'favorites'
+        ? this._showOnlyFavorites
+        : !this._showOnlyFavorites && allVisible
+
+      button.classList.toggle('is-active', active)
+      button.setAttribute('aria-pressed', active ? 'true' : 'false')
     })
 
     this.updateCompareStatus()

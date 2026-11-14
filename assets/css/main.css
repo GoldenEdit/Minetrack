@@ -569,6 +569,10 @@ body.has-compare-dock .shell {
   opacity: 1;
 }
 
+.sort-header.is-reversed::after {
+  transform: rotate(180deg);
+}
+
 .sort-header:disabled {
   color: var(--text-tertiary);
   opacity: 0.5;

@@ -7,6 +7,9 @@ import { isLegacyDesign } from './design'
 
 import MISSING_FAVICON from 'url:../images/missing_favicon.svg'
 
+// Week over week changes smaller than this are not shown
+const TREND_THRESHOLD = 0.03
+
 const FAVORITE_ICON = '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M8 1.75l1.64 3.32 3.66.53-2.65 2.58.63 3.65L8 10.1l-3.28 1.73.63-3.65L2.7 5.6l3.66-.53L8 1.75z" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>'
 
 export class ServerRegistry {
@@ -93,25 +96,34 @@ export class ServerRegistry {
     divider.classList.toggle('is-hidden', !(favorite && other))
   }
 
-  // Ranks, relative size bars and week-over-week change, so servers can be compared at a glance
+  // Ranks and week-over-week change, so servers can be compared at a glance
   updateStandings () {
     if (isLegacyDesign()) return
 
     const servers = this.getServerRegistrations()
     const online = servers.filter(server => !server.isOffline && server.playerCount > 0)
     const total = online.reduce((sum, server) => sum + server.playerCount, 0)
-    const max = online.reduce((top, server) => Math.max(top, server.playerCount), 0)
 
     online.sort((a, b) => b.playerCount - a.playerCount)
-    const ranks = new Map()
-    online.forEach((server, index) => ranks.set(server, index + 1))
+    const playerRanks = new Map()
+    online.forEach((server, index) => playerRanks.set(server, index + 1))
+
+    // The rank column follows the Record sort too, so the numbers always count down the list in order
+    let shownRanks = playerRanks
+    const list = document.getElementById('server-list')
+    if (list && list.dataset.sort === 'record') {
+      shownRanks = new Map()
+      servers
+        .filter(server => server.lastRecordData)
+        .sort((a, b) => b.lastRecordData.playerCount - a.lastRecordData.playerCount)
+        .forEach((server, index) => shownRanks.set(server, index + 1))
+    }
 
     const now = Date.now() / 1000
 
     for (const server of servers) {
-      const rank = ranks.get(server)
       const lastWeek = this._app.graphDisplayManager.getLastWeekPlayerCount(server.serverId, now)
-      server.updateStanding(rank, total, max, lastWeek)
+      server.updateStanding(shownRanks.get(server), playerRanks.get(server), total, lastWeek)
     }
   }
 
@@ -389,21 +401,15 @@ export class ServerRegistration {
     if (label) label.innerText = `#${rankIndex + 1}`
   }
 
-  updateStanding (rank, total, max, lastWeek) {
+  updateStanding (shownRank, rank, total, lastWeek) {
     const rankElement = document.getElementById(`ranking_${this.serverId}`)
-    const barElement = document.getElementById(`share-bar_${this.serverId}`)
     const trendElement = document.getElementById(`trend_${this.serverId}`)
     const playersElement = document.getElementById(`player-count_${this.serverId}`)
     const live = typeof rank === 'number'
 
     if (rankElement) {
-      const text = live ? String(rank) : ''
+      const text = typeof shownRank === 'number' ? String(shownRank) : ''
       if (rankElement.innerText !== text) rankElement.innerText = text
-    }
-
-    if (barElement) {
-      const width = live && max > 0 ? Math.max(2, (this.playerCount / max) * 100) : 0
-      barElement.style.width = `${width}%`
     }
 
     if (playersElement) {
@@ -415,22 +421,16 @@ export class ServerRegistration {
     }
 
     if (trendElement) {
-      let text = ''
+      let html = ''
       let direction = ''
 
+      // Small swings are noise at a glance, so only changes of a few percent or more get shown
       if (live && typeof lastWeek === 'number' && lastWeek > 0) {
         const change = (this.playerCount - lastWeek) / lastWeek
-        const rounded = Math.round(change * 100)
 
-        if (rounded > 0) {
-          text = `▲ ${formatRatio(change)}`
-          direction = 'up'
-        } else if (rounded < 0) {
-          text = `▼ ${formatRatio(-change)}`
-          direction = 'down'
-        } else {
-          text = '0%'
-          direction = 'flat'
+        if (Math.abs(change) >= TREND_THRESHOLD) {
+          direction = change > 0 ? 'up' : 'down'
+          html = `<span class="trend-arrow">${change > 0 ? '▲' : '▼'}</span>${formatRatio(Math.abs(change))}`
         }
 
         trendElement.title = `${formatNumber(lastWeek)} players at this time last week`
@@ -438,7 +438,10 @@ export class ServerRegistration {
         trendElement.removeAttribute('title')
       }
 
-      if (trendElement.innerText !== text) trendElement.innerText = text
+      if (trendElement.dataset.html !== html) {
+        trendElement.dataset.html = html
+        trendElement.innerHTML = html
+      }
       trendElement.dataset.direction = direction
     }
   }
@@ -474,17 +477,15 @@ export class ServerRegistration {
       this.lastRecordData = ping.recordData
 
       const valueElement = document.getElementById(`record-value_${this.serverId}`)
-      const dateElement = document.getElementById(`record-date_${this.serverId}`)
 
-      if (valueElement) valueElement.innerText = formatNumber(ping.recordData.playerCount)
+      if (valueElement) {
+        valueElement.innerText = formatNumber(ping.recordData.playerCount)
 
-      if (dateElement) {
+        // The date is detail, so it lives in the tooltip rather than taking a line in every row
         if (ping.recordData.timestamp > 0) {
-          dateElement.innerText = formatDate(ping.recordData.timestamp)
-          dateElement.title = `At ${formatDate(ping.recordData.timestamp)} ${formatTimestampSeconds(ping.recordData.timestamp)}`
+          valueElement.title = `Record set ${formatDate(ping.recordData.timestamp)} ${formatTimestampSeconds(ping.recordData.timestamp)}`
         } else {
-          dateElement.innerText = ''
-          dateElement.removeAttribute('title')
+          valueElement.removeAttribute('title')
         }
       }
     }
@@ -622,15 +623,11 @@ export class ServerRegistration {
           <span class="mono player-count" id="player-count_${this.serverId}"><span id="player-count-value_${this.serverId}"></span></span>
           <span class="offline-pill" id="offline_${this.serverId}" hidden>offline</span>
         </div>
-        <div class="player-meta">
-          <span class="mono trend" id="trend_${this.serverId}"></span>
-        </div>
-        <div class="share-track"><div class="share-bar" id="share-bar_${this.serverId}"></div></div>
+        <span class="mono trend" id="trend_${this.serverId}"></span>
       </div>
       <div class="server-spark" id="chart_${this.serverId}"></div>
       <div class="server-record" id="record_${this.serverId}">
         <span class="mono record-value" id="record-value_${this.serverId}">-</span>
-        <span class="mono record-date" id="record-date_${this.serverId}"></span>
       </div>
       <button type="button" class="${this._app.favoritesManager.getIconClass(this.isFavorite)}" id="favorite-toggle_${this.serverId}" aria-pressed="false" aria-label="Favourite ${escapeHtml(this.data.name)}" title="Favourite">${FAVORITE_ICON}</button>`
 

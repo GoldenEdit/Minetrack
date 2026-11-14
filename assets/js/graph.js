@@ -14,6 +14,11 @@ const HIDDEN_SERVERS_STORAGE_KEY = 'minetrack_hidden_servers'
 const SHOW_FAVORITES_STORAGE_KEY = 'minetrack_show_favorites'
 const SHOW_HISTORY_STORAGE_KEY = 'minetrack_show_history'
 
+// Last week's dashed lines double the number of lines on the graph, so the new design leaves them off until asked for
+function showHistoryByDefault () {
+  return isLegacyDesign()
+}
+
 function prefersReducedMotion () {
   return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)
 }
@@ -51,7 +56,7 @@ export class GraphDisplayManager {
     this._hasLoadedSettings = false
     this._initEventListenersOnce = false
     this._showOnlyFavorites = false
-    this._showHistory = true
+    this._showHistory = showHistoryByDefault()
     this._soloIds = new Set()
     this._lastWeekData = undefined
     this._lastWeekSeries = []
@@ -116,7 +121,8 @@ export class GraphDisplayManager {
         this._showOnlyFavorites = true
       }
 
-      this._showHistory = localStorage.getItem(SHOW_HISTORY_STORAGE_KEY) !== 'false'
+      const storedHistory = localStorage.getItem(SHOW_HISTORY_STORAGE_KEY)
+      this._showHistory = storedHistory === null ? showHistoryByDefault() : storedHistory === 'true'
 
       // If only favorites mode is active, use the stored favorite servers data instead
       let serverNames
@@ -166,7 +172,7 @@ export class GraphDisplayManager {
 
     if (!this._sharedView) return
 
-    this._showHistory = this._sharedView.history !== false
+    this._showHistory = typeof this._sharedView.history === 'boolean' ? this._sharedView.history : showHistoryByDefault()
     this._showOnlyFavorites = false
 
     const sharedNames = new Set(this._sharedView.servers || [])
@@ -241,9 +247,9 @@ export class GraphDisplayManager {
         localStorage.removeItem(SHOW_FAVORITES_STORAGE_KEY)
       }
 
-      // History is shown by default, so only store the opt-out
-      if (!this._showHistory) {
-        localStorage.setItem(SHOW_HISTORY_STORAGE_KEY, false)
+      // Only store a choice that differs from this design's default
+      if (this._showHistory !== showHistoryByDefault()) {
+        localStorage.setItem(SHOW_HISTORY_STORAGE_KEY, this._showHistory)
       } else {
         localStorage.removeItem(SHOW_HISTORY_STORAGE_KEY)
       }
@@ -839,8 +845,8 @@ export class GraphDisplayManager {
       view.range = this._rangeSeconds
     }
 
-    if (!this._showHistory) {
-      view.history = false
+    if (this._showHistory !== showHistoryByDefault()) {
+      view.history = this._showHistory
     }
 
     return view

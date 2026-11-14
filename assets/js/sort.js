@@ -234,6 +234,7 @@ export class SortController {
     if (list) list.dataset.sort = SORT_OPTIONS[this._sortOptionIndex].mode
 
     this.sortServers()
+    this._app.serverRegistry.updateStandings()
   }
 
   sortServers = () => {

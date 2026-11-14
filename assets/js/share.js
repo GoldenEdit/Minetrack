@@ -53,10 +53,19 @@ export function parseSharedView (search) {
   return view
 }
 
+function getTimeZone () {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone
+  } catch {
+    return undefined
+  }
+}
+
 // Keeps the address bar in sync with the graph, so copying it shares the current view
 export function writeSharedViewToUrl (view) {
   const params = new URLSearchParams(location.search)
   SHARE_PARAMS.forEach(key => params.delete(key))
+  params.delete('tz')
 
   if (view.servers) {
     view.servers.forEach(name => params.append('servers', name))
@@ -71,6 +80,12 @@ export function writeSharedViewToUrl (view) {
     params.set('history', '0')
   } else if (view.history === true) {
     params.set('history', '1')
+  }
+
+  // Only read by link previews, so their times match the clock of whoever shared the link
+  const timeZone = getTimeZone()
+  if (timeZone && SHARE_PARAMS.some(key => params.has(key))) {
+    params.set('tz', timeZone)
   }
 
   const search = params.toString()

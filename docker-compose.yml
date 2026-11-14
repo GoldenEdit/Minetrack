@@ -9,4 +9,5 @@ services:
       - 1.1.1.1
     ports:
       - "80:8080"
+    init: true
     restart: always

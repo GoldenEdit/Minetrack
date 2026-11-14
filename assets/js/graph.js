@@ -1007,6 +1007,14 @@ export class GraphDisplayManager {
     // This may cause unnessecary localStorage updates, but its a rare and harmless outcome
     this.updateLocalStorage()
     this.syncSeriesVisibility()
+
+    // redraw alone keeps the old Y range, so set the x scale again to re-range it to the visible servers
+    const xScale = { min: this._plotInstance.scales.x.min, max: this._plotInstance.scales.x.max }
+
+    this.withRangeLock(() => {
+      this._plotInstance.setScale('x', xScale)
+    })
+
     this._plotInstance.redraw()
   }
 

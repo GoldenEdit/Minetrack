@@ -73,6 +73,12 @@ export class FavoritesManager {
 
     element.setAttribute('class', this.getIconClass(serverRegistration.isFavorite))
     element.setAttribute('aria-pressed', serverRegistration.isFavorite ? 'true' : 'false')
+
+    if (!isLegacyDesign()) {
+      const verb = serverRegistration.isFavorite ? 'Unfavourite' : 'Favourite'
+      element.setAttribute('aria-label', `${verb} ${serverRegistration.data.name}`)
+      element.title = verb
+    }
   }
 
   getIconClass (isFavorite) {

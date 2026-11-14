@@ -44,7 +44,7 @@
 						<button type="button" class="segment" data-sort-index="1" aria-pressed="false">Record</button>
 						<button type="button" class="segment" data-sort-index="2" aria-pressed="false">Name</button>
 					</div>
-					<input id="server-search" class="search" type="search" placeholder="Search" aria-label="Search servers" autocomplete="off" spellcheck="false">
+					<input id="server-search" class="search" type="search" placeholder="Search  /" aria-label="Search servers by name or address" aria-keyshortcuts="/" title="Search servers (press / to focus, Esc to clear)" autocomplete="off" spellcheck="false">
 				</div>
 			</div>
 		</header>
@@ -87,7 +87,10 @@
 
 				<section class="server-section">
 					<div id="server-list" class="server-list" data-sort="players"></div>
-					<p id="server-empty" class="empty-state" hidden>No servers match</p>
+					<div id="server-empty" class="empty-state" role="status" hidden>
+						<p>No servers match &ldquo;<span id="server-empty-query"></span>&rdquo;</p>
+						<button type="button" id="server-empty-clear" class="ghost">Clear search</button>
+					</div>
 					<a class="server-add" href="https://github.com/GoldenEdit/Minetrack/blob/main/servers.json" rel="noopener noreferrer" target="_blank">
 						<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M12 7.5v9M7.5 12h9" fill="none" stroke="currentColor" stroke-width="1.2"/></svg>
 						<span>Add new server</span>

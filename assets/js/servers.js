@@ -70,6 +70,9 @@ export class ServerRegistry {
     const empty = document.getElementById('server-empty')
     if (empty) empty.hidden = !(servers.length > 0 && visible === 0)
 
+    const emptyQuery = document.getElementById('server-empty-query')
+    if (emptyQuery) emptyQuery.innerText = query
+
     this.updateFavoritesDivider()
   }
 
@@ -502,6 +505,12 @@ export class ServerRegistration {
     const row = document.getElementById(`container_${this.serverId}`)
     if (!row) return
     row.classList.toggle('is-series-off', !this.isVisible)
+
+    // The row acts as a toggle for showing only the selected servers on the graph
+    if (!isLegacyDesign()) {
+      const selected = this._app.graphDisplayManager.isServerSelected(this)
+      row.setAttribute('aria-pressed', selected ? 'true' : 'false')
+    }
   }
 
   initServerStatus (latestPing) {
@@ -515,6 +524,10 @@ export class ServerRegistration {
 
     serverElement.id = `container_${this.serverId}`
     serverElement.className = 'server'
+    serverElement.tabIndex = 0
+    serverElement.setAttribute('role', 'button')
+    serverElement.setAttribute('aria-pressed', 'false')
+    serverElement.title = 'Click to show only this server on the graph'
     serverElement.style.setProperty('--server-color', safeCssColor(this.data.color))
     serverElement.innerHTML = `<img class="server-favicon" src="${latestPing.favicon || MISSING_FAVICON}" id="favicon_${this.serverId}" alt="">
       <div class="server-identity">
@@ -522,7 +535,7 @@ export class ServerRegistration {
           <span class="status-dot"></span>
           <span class="server-name">${escapeHtml(this.data.name)}</span>
         </div>
-        <div class="server-ip mono">${address}</div>
+        <button type="button" class="server-ip mono" id="copy-address_${this.serverId}" title="Copy address" aria-label="Copy address ${address}">${address}</button>
       </div>
       <div class="server-players">
         <span class="mono player-count" id="player-count_${this.serverId}"><span id="player-count-value_${this.serverId}"></span></span>
@@ -533,7 +546,7 @@ export class ServerRegistration {
         <span class="mono record-value" id="record-value_${this.serverId}">-</span>
         <span class="mono record-date" id="record-date_${this.serverId}"></span>
       </div>
-      <button type="button" class="${this._app.favoritesManager.getIconClass(this.isFavorite)}" id="favorite-toggle_${this.serverId}" aria-pressed="false" aria-label="Toggle favourite">${FAVORITE_ICON}</button>`
+      <button type="button" class="${this._app.favoritesManager.getIconClass(this.isFavorite)}" id="favorite-toggle_${this.serverId}" aria-pressed="false" aria-label="Favourite ${escapeHtml(this.data.name)}" title="Favourite">${FAVORITE_ICON}</button>`
 
     document.getElementById('server-list').appendChild(serverElement)
   }
@@ -560,6 +573,26 @@ export class ServerRegistration {
     document.getElementById('server-list').appendChild(serverElement)
   }
 
+  copyAddress (element) {
+    const address = formatMinecraftServerAddress(this.data.ip, this.data.port)
+
+    const done = (copied) => {
+      element.classList.toggle('is-copied', copied)
+      element.innerText = copied ? 'Copied!' : address
+      clearTimeout(this._copyTimer)
+      this._copyTimer = setTimeout(() => {
+        element.classList.remove('is-copied')
+        element.innerText = address
+      }, 1500)
+    }
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(address).then(() => done(true), () => done(false))
+    } else {
+      done(false)
+    }
+  }
+
   initEventListeners () {
     const row = document.getElementById(`container_${this.serverId}`)
     const favorite = document.getElementById(`favorite-toggle_${this.serverId}`)
@@ -573,12 +606,30 @@ export class ServerRegistration {
 
     let isMouseOver = false
 
-    row.addEventListener('click', () => {
+    const toggle = () => {
       this._app.graphDisplayManager.toggleServer(this)
 
       // Toggling can hide or show the hovered server, so its focus needs recomputing
       if (isMouseOver) this._app.graphDisplayManager.focusServer(this)
+    }
+
+    row.addEventListener('click', toggle, false)
+
+    row.addEventListener('keydown', (event) => {
+      if (event.target !== row) return
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault()
+        toggle()
+      }
     }, false)
+
+    const copy = document.getElementById(`copy-address_${this.serverId}`)
+    if (copy) {
+      copy.addEventListener('click', (event) => {
+        event.stopPropagation()
+        this.copyAddress(copy)
+      }, false)
+    }
 
     // Touch has no hover out, so a tap would leave the other lines dimmed
     row.addEventListener('pointerenter', (event) => {

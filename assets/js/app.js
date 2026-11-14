@@ -29,9 +29,44 @@ export class App {
 
     const search = document.getElementById('server-search')
     if (search) {
+      const clearSearch = () => {
+        search.value = ''
+        this.serverRegistry.setSearchQuery('')
+      }
+
       search.addEventListener('input', () => {
         this.serverRegistry.setSearchQuery(search.value)
       })
+
+      search.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+          if (search.value) {
+            clearSearch()
+          } else {
+            search.blur()
+          }
+        }
+      })
+
+      // "/" focuses search from anywhere unless the user is already typing in a field
+      document.addEventListener('keydown', (event) => {
+        if (event.key !== '/' || event.ctrlKey || event.metaKey || event.altKey) return
+
+        const target = event.target
+        if (target && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))) return
+
+        event.preventDefault()
+        search.focus()
+        search.select()
+      })
+
+      const clearButton = document.getElementById('server-empty-clear')
+      if (clearButton) {
+        clearButton.addEventListener('click', () => {
+          clearSearch()
+          search.focus()
+        })
+      }
     }
 
     this.socketManager.createWebSocket()

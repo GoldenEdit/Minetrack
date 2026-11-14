@@ -1071,6 +1071,10 @@ export class GraphDisplayManager {
     }
   }
 
+  isServerSelected (serverRegistration) {
+    return this._soloIds.has(serverRegistration.serverId)
+  }
+
   toggleServer (serverRegistration) {
     this.endSharedView()
 

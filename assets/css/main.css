@@ -434,6 +434,12 @@ a:hover {
   display: none;
 }
 
+.server:focus-visible {
+  outline: 1px solid var(--text-muted);
+  outline-offset: -1px;
+  background: var(--surface-1);
+}
+
 .server-favicon {
   width: 24px;
   height: 24px;
@@ -473,12 +479,28 @@ a:hover {
 }
 
 .server-ip {
+  display: block;
+  max-width: 100%;
   margin-top: 2px;
   color: var(--text-muted);
+  font-family: var(--font-mono);
   font-size: 12px;
+  text-align: left;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  cursor: copy;
+}
+
+.server-ip:hover {
+  color: var(--text);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.server-ip.is-copied {
+  color: var(--text);
+  text-decoration: none;
 }
 
 .server-players {
@@ -613,11 +635,31 @@ a:hover {
 
 /* States */
 .empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
   padding: 48px 16px;
   text-align: center;
   color: var(--text-muted);
   border: 1px solid var(--line);
   border-radius: 8px;
+}
+
+.empty-state[hidden] {
+  display: none;
+}
+
+#server-empty-query {
+  color: var(--text);
+  word-break: break-all;
+}
+
+/* Visible keyboard focus for controls that otherwise have no focus style */
+button:focus-visible,
+a:focus-visible {
+  outline: 1px solid var(--text-muted);
+  outline-offset: 1px;
 }
 
 footer {

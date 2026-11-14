@@ -3,6 +3,7 @@
   "version": "5.6.1",
   "description": "A Minecraft server tracker that lets you focus on the basics.",
   "dependencies": {
+    "@resvg/resvg-js": "^2.6.2",
     "finalhandler": "^2.1.1",
     "mcpe-ping-fixed": "0.0.3",
     "mcping-js": "^1.5.0",
@@ -46,7 +47,8 @@
   },
   "scripts": {
     "build": "eslint assets/js/*.js && parcel build assets/html/index.html --dist-dir dist",
-    "dev": "parcel build assets/html/index.html --no-optimize --dist-dir dist"
+    "dev": "parcel build assets/html/index.html --no-optimize --dist-dir dist",
+    "test": "node --test test/*.test.js"
   },
   "optionalDependencies": {
     "bufferutil": "^4.2.0",

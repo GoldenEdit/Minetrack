@@ -9,7 +9,7 @@ module.exports = [
     languageOptions: { sourceType: 'module', globals: globals.browser }
   },
   {
-    files: ['lib/**/*.js', 'main.js'],
+    files: ['lib/**/*.js', 'test/**/*.js', 'main.js'],
     languageOptions: { sourceType: 'commonjs', globals: globals.node }
   }
 ]

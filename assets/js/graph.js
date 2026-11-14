@@ -1212,7 +1212,7 @@ export class GraphDisplayManager {
     this.updateCompareStatus()
   }
 
-  // Selecting rows to compare them is otherwise undiscoverable, so say how and how many are selected
+  // Says how many servers are being compared, with Copy link and Clear
   updateCompareStatus () {
     const text = document.getElementById('graph-compare-text')
     const clear = document.getElementById('graph-compare-clear')
@@ -1227,14 +1227,10 @@ export class GraphDisplayManager {
     const list = document.getElementById('server-list')
     if (list) list.classList.toggle('is-comparing', count > 0)
 
-    const touch = window.matchMedia && window.matchMedia('(hover: none)').matches
     const label = count === 1 ? 'Showing 1 server' : `Comparing ${count} servers`
 
-    if (count === 0) {
-      text.innerText = touch ? 'Tap servers below to compare' : 'Click servers below to compare'
-    } else {
-      text.innerText = label
-    }
+    // Nothing is shown until servers are picked
+    text.innerText = count === 0 ? '' : label
 
     clear.hidden = count === 0
     if (share) share.hidden = count === 0

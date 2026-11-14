@@ -698,11 +698,17 @@ export class GraphDisplayManager {
     this.updateUrl()
   }
 
+  // uPlot applies setScale in a microtask, so its setScale hook would otherwise fire after the lock is released and
+  // mistake our own range change for a drag zoom. batch() commits and fires the hooks while the lock is still held.
   withRangeLock (fn) {
     const wasLocked = this._lockRange
     this._lockRange = true
     try {
-      fn()
+      if (wasLocked) {
+        fn()
+      } else {
+        this._plotInstance.batch(fn)
+      }
     } finally {
       this._lockRange = wasLocked
     }

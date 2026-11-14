@@ -14,6 +14,15 @@ const HIDDEN_SERVERS_STORAGE_KEY = 'minetrack_hidden_servers'
 const SHOW_FAVORITES_STORAGE_KEY = 'minetrack_show_favorites'
 const SHOW_HISTORY_STORAGE_KEY = 'minetrack_show_history'
 
+// Last week's dashed lines double the number of lines on the graph, so the new design leaves them off until asked for
+function showHistoryByDefault () {
+  return isLegacyDesign()
+}
+
+function prefersReducedMotion () {
+  return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+}
+
 const LAST_WEEK_REFRESH_MARGIN_SECONDS = 120
 const LAST_WEEK_RETRY_DELAY = 30 * 1000
 
@@ -47,7 +56,7 @@ export class GraphDisplayManager {
     this._hasLoadedSettings = false
     this._initEventListenersOnce = false
     this._showOnlyFavorites = false
-    this._showHistory = true
+    this._showHistory = showHistoryByDefault()
     this._soloIds = new Set()
     this._lastWeekData = undefined
     this._lastWeekSeries = []
@@ -90,9 +99,8 @@ export class GraphDisplayManager {
       }
     }
 
-    if (this._showHistory) {
-      this.refreshLastWeekGraphIfNeeded(timestamp)
-    }
+    // Last week's data also powers each server's change figure, so keep it fresh even when the lines are hidden
+    this.refreshLastWeekGraphIfNeeded(timestamp)
 
     this.updatePlotData()
   }
@@ -108,12 +116,14 @@ export class GraphDisplayManager {
 
   loadLocalStorage () {
     if (typeof localStorage !== 'undefined') {
+      // The new design has no Favourites only control, so a saved choice from before would leave no way out
       const showOnlyFavorites = localStorage.getItem(SHOW_FAVORITES_STORAGE_KEY)
-      if (showOnlyFavorites) {
+      if (showOnlyFavorites && isLegacyDesign()) {
         this._showOnlyFavorites = true
       }
 
-      this._showHistory = localStorage.getItem(SHOW_HISTORY_STORAGE_KEY) !== 'false'
+      const storedHistory = localStorage.getItem(SHOW_HISTORY_STORAGE_KEY)
+      this._showHistory = storedHistory === null ? showHistoryByDefault() : storedHistory === 'true'
 
       // If only favorites mode is active, use the stored favorite servers data instead
       let serverNames
@@ -163,7 +173,7 @@ export class GraphDisplayManager {
 
     if (!this._sharedView) return
 
-    this._showHistory = this._sharedView.history !== false
+    this._showHistory = typeof this._sharedView.history === 'boolean' ? this._sharedView.history : showHistoryByDefault()
     this._showOnlyFavorites = false
 
     const sharedNames = new Set(this._sharedView.servers || [])
@@ -238,9 +248,9 @@ export class GraphDisplayManager {
         localStorage.removeItem(SHOW_FAVORITES_STORAGE_KEY)
       }
 
-      // History is shown by default, so only store the opt-out
-      if (!this._showHistory) {
-        localStorage.setItem(SHOW_HISTORY_STORAGE_KEY, false)
+      // Only store a choice that differs from this design's default
+      if (this._showHistory !== showHistoryByDefault()) {
+        localStorage.setItem(SHOW_HISTORY_STORAGE_KEY, this._showHistory)
       } else {
         localStorage.removeItem(SHOW_HISTORY_STORAGE_KEY)
       }
@@ -580,6 +590,7 @@ export class GraphDisplayManager {
         serverRegistration.updateSeriesVisibility()
       }
 
+      this.observeGraphVisibility()
       this.updateControls()
     }
 
@@ -587,9 +598,7 @@ export class GraphDisplayManager {
     this.renderRangeControls()
     this.applyInitialRange()
 
-    if (this._showHistory) {
-      this.refreshLastWeekGraphIfNeeded(this._graphTimestamps[this._graphTimestamps.length - 1])
-    }
+    this.refreshLastWeekGraphIfNeeded(this._graphTimestamps[this._graphTimestamps.length - 1])
   }
 
   getFullRange () {
@@ -837,8 +846,8 @@ export class GraphDisplayManager {
       view.range = this._rangeSeconds
     }
 
-    if (!this._showHistory) {
-      view.history = false
+    if (this._showHistory !== showHistoryByDefault()) {
+      view.history = this._showHistory
     }
 
     return view
@@ -919,6 +928,25 @@ export class GraphDisplayManager {
     this._lastWeekData = payload
 
     this.updatePlotData()
+    this._app.serverRegistry.updateStandings()
+  }
+
+  // A server's player count at this time last week, from the bucket covering the timestamp
+  getLastWeekPlayerCount (serverId, timestamp) {
+    if (!this._lastWeekData) return
+
+    const { bucketStart, bucketSize, graphData } = this._lastWeekData
+    const buckets = graphData[serverId]
+    if (!buckets) return
+
+    const bucket = Math.floor((timestamp - bucketStart) / bucketSize)
+
+    // Fall back to the previous bucket since the newest one may still be empty
+    for (let index = bucket; index >= bucket - 1; index--) {
+      if (index >= 0 && index < buckets.length && typeof buckets[index] === 'number') {
+        return buckets[index]
+      }
+    }
   }
 
   isZoomed () {
@@ -959,7 +987,12 @@ export class GraphDisplayManager {
 
     button.classList.toggle('graph-controls-history-off', !this._showHistory)
     button.classList.toggle('is-active', this._showHistory)
-    button.setAttribute('aria-pressed', this._showHistory ? 'true' : 'false')
+
+    if (isLegacyDesign()) {
+      button.setAttribute('aria-pressed', this._showHistory ? 'true' : 'false')
+    } else {
+      button.setAttribute('aria-checked', this._showHistory ? 'true' : 'false')
+    }
   }
 
   syncSeriesVisibility () {
@@ -1071,6 +1104,10 @@ export class GraphDisplayManager {
     }
   }
 
+  isServerSelected (serverRegistration) {
+    return this._soloIds.has(serverRegistration.serverId)
+  }
+
   toggleServer (serverRegistration) {
     this.endSharedView()
 
@@ -1172,13 +1209,72 @@ export class GraphDisplayManager {
       return
     }
 
-    document.querySelectorAll('.graph-controls-show').forEach((button) => {
-      const favoritesMode = button.getAttribute('minetrack-show-type') === 'favorites'
-      button.classList.toggle('is-active', favoritesMode && this._showOnlyFavorites)
-      if (favoritesMode) {
-        button.setAttribute('aria-pressed', this._showOnlyFavorites ? 'true' : 'false')
-      }
-    })
+    this.updateCompareStatus()
+  }
+
+  // Says how many servers are being compared, with Copy link and Clear
+  updateCompareStatus () {
+    const text = document.getElementById('graph-compare-text')
+    const clear = document.getElementById('graph-compare-clear')
+    const share = document.getElementById('graph-compare-share')
+    if (!text || !clear) return
+
+    const count = this._soloIds.size
+    const compare = document.getElementById('graph-compare')
+    if (compare) compare.classList.toggle('is-active', count > 0)
+
+    // Lets the list fade the servers that are not part of the comparison
+    const list = document.getElementById('server-list')
+    if (list) list.classList.toggle('is-comparing', count > 0)
+
+    const label = count === 1 ? 'Showing 1 server' : `Comparing ${count} servers`
+
+    // Nothing is shown until servers are picked
+    text.innerText = count === 0 ? '' : label
+
+    clear.hidden = count === 0
+    if (share) share.hidden = count === 0
+
+    const dockText = document.getElementById('compare-dock-text')
+    if (dockText) dockText.innerText = label
+
+    this.updateCompareDock()
+  }
+
+  updateCompareDock () {
+    const dock = document.getElementById('compare-dock')
+    if (!dock) return
+
+    const show = this._soloIds.size > 0 && !!this._plotInstance && this._graphInView === false
+    if (dock.hidden === !show) return
+
+    dock.hidden = !show
+    document.body.classList.toggle('has-compare-dock', show)
+  }
+
+  // Tracks whether the graph is on screen, which decides if the compare dock is needed
+  observeGraphVisibility () {
+    const panel = document.getElementById('graph-panel')
+    if (!panel || typeof IntersectionObserver === 'undefined') return
+
+    if (this._graphObserver) this._graphObserver.disconnect()
+
+    this._graphObserver = new IntersectionObserver((entries) => {
+      const entry = entries[entries.length - 1]
+      // Count the graph as out of view once less than a fifth of it is on screen
+      this._graphInView = entry.isIntersecting && entry.intersectionRatio >= 0.2
+      this.updateCompareDock()
+    }, { threshold: [0, 0.2, 0.5, 1] })
+
+    this._graphObserver.observe(panel)
+
+    const view = document.getElementById('compare-dock-view')
+    if (view && !this._boundDockView) {
+      this._boundDockView = true
+      view.addEventListener('click', () => {
+        panel.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' })
+      }, false)
+    }
   }
 
   reset () {
@@ -1193,6 +1289,13 @@ export class GraphDisplayManager {
     this._graphData = []
     this._hasLoadedSettings = false
     this._soloIds = new Set()
+
+    if (this._graphObserver) {
+      this._graphObserver.disconnect()
+      this._graphObserver = undefined
+    }
+    this._graphInView = undefined
+    this.updateCompareDock()
 
     this._lastWeekData = undefined
     this._lastWeekSeries = []

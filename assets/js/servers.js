@@ -1,11 +1,14 @@
 import uPlot from 'uplot'
 
 import { RelativeScale } from './scale'
-import { formatNumber, formatTimestampSeconds, formatDate, formatMinecraftServerAddress, formatMinecraftVersions, escapeHtml, safeCssColor } from './util'
+import { formatNumber, formatTimestampSeconds, formatDate, formatMinecraftServerAddress, formatMinecraftVersions, formatRatio, escapeHtml, safeCssColor } from './util'
 import { uPlotTooltipPlugin } from './plugins'
 import { isLegacyDesign } from './design'
 
 import MISSING_FAVICON from 'url:../images/missing_favicon.svg'
+
+// Week over week changes smaller than this are not shown
+const TREND_THRESHOLD = 0.03
 
 const FAVORITE_ICON = '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M8 1.75l1.64 3.32 3.66.53-2.65 2.58.63 3.65L8 10.1l-3.28 1.73.63-3.65L2.7 5.6l3.66-.53L8 1.75z" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>'
 
@@ -70,6 +73,9 @@ export class ServerRegistry {
     const empty = document.getElementById('server-empty')
     if (empty) empty.hidden = !(servers.length > 0 && visible === 0)
 
+    const emptyQuery = document.getElementById('server-empty-query')
+    if (emptyQuery) emptyQuery.innerText = query
+
     this.updateFavoritesDivider()
   }
 
@@ -88,6 +94,37 @@ export class ServerRegistry {
     }
 
     divider.classList.toggle('is-hidden', !(favorite && other))
+  }
+
+  // Ranks and week-over-week change, so servers can be compared at a glance
+  updateStandings () {
+    if (isLegacyDesign()) return
+
+    const servers = this.getServerRegistrations()
+    const online = servers.filter(server => !server.isOffline && server.playerCount > 0)
+    const total = online.reduce((sum, server) => sum + server.playerCount, 0)
+
+    online.sort((a, b) => b.playerCount - a.playerCount)
+    const playerRanks = new Map()
+    online.forEach((server, index) => playerRanks.set(server, index + 1))
+
+    // The rank column follows the Record sort too, so the numbers always count down the list in order
+    let shownRanks = playerRanks
+    const list = document.getElementById('server-list')
+    if (list && list.dataset.sort === 'record') {
+      shownRanks = new Map()
+      servers
+        .filter(server => server.lastRecordData)
+        .sort((a, b) => b.lastRecordData.playerCount - a.lastRecordData.playerCount)
+        .forEach((server, index) => shownRanks.set(server, index + 1))
+    }
+
+    const now = Date.now() / 1000
+
+    for (const server of servers) {
+      const lastWeek = this._app.graphDisplayManager.getLastWeekPlayerCount(server.serverId, now)
+      server.updateStanding(shownRanks.get(server), playerRanks.get(server), total, lastWeek)
+    }
   }
 
   resizeSparklines () {
@@ -357,8 +394,56 @@ export class ServerRegistration {
   updateServerRankIndex (rankIndex) {
     this.rankIndex = rankIndex
 
+    // The new design ranks by player count in #updateStanding, whatever the list is sorted by
+    if (!isLegacyDesign()) return
+
     const label = document.getElementById(`ranking_${this.serverId}`)
     if (label) label.innerText = `#${rankIndex + 1}`
+  }
+
+  updateStanding (shownRank, rank, total, lastWeek) {
+    const rankElement = document.getElementById(`ranking_${this.serverId}`)
+    const trendElement = document.getElementById(`trend_${this.serverId}`)
+    const playersElement = document.getElementById(`player-count_${this.serverId}`)
+    const live = typeof rank === 'number'
+
+    if (rankElement) {
+      const text = typeof shownRank === 'number' ? String(shownRank) : ''
+      if (rankElement.innerText !== text) rankElement.innerText = text
+    }
+
+    if (playersElement) {
+      if (live && total > 0) {
+        playersElement.title = `#${rank} by players · ${formatRatio(this.playerCount / total)} of everyone online`
+      } else {
+        playersElement.removeAttribute('title')
+      }
+    }
+
+    if (trendElement) {
+      let html = ''
+      let direction = ''
+
+      // Small swings are noise at a glance, so only changes of a few percent or more get shown
+      if (live && typeof lastWeek === 'number' && lastWeek > 0) {
+        const change = (this.playerCount - lastWeek) / lastWeek
+
+        if (Math.abs(change) >= TREND_THRESHOLD) {
+          direction = change > 0 ? 'up' : 'down'
+          html = `<span class="trend-arrow">${change > 0 ? '▲' : '▼'}</span>${formatRatio(Math.abs(change))}`
+        }
+
+        trendElement.title = `${formatNumber(lastWeek)} players at this time last week`
+      } else {
+        trendElement.removeAttribute('title')
+      }
+
+      if (trendElement.dataset.html !== html) {
+        trendElement.dataset.html = html
+        trendElement.innerHTML = html
+      }
+      trendElement.dataset.direction = direction
+    }
   }
 
   _renderValue (prefix, handler) {
@@ -392,17 +477,15 @@ export class ServerRegistration {
       this.lastRecordData = ping.recordData
 
       const valueElement = document.getElementById(`record-value_${this.serverId}`)
-      const dateElement = document.getElementById(`record-date_${this.serverId}`)
 
-      if (valueElement) valueElement.innerText = formatNumber(ping.recordData.playerCount)
+      if (valueElement) {
+        valueElement.innerText = formatNumber(ping.recordData.playerCount)
 
-      if (dateElement) {
+        // The date is detail, so it lives in the tooltip rather than taking a line in every row
         if (ping.recordData.timestamp > 0) {
-          dateElement.innerText = formatDate(ping.recordData.timestamp)
-          dateElement.title = `At ${formatDate(ping.recordData.timestamp)} ${formatTimestampSeconds(ping.recordData.timestamp)}`
+          valueElement.title = `Record set ${formatDate(ping.recordData.timestamp)} ${formatTimestampSeconds(ping.recordData.timestamp)}`
         } else {
-          dateElement.innerText = ''
-          dateElement.removeAttribute('title')
+          valueElement.removeAttribute('title')
         }
       }
     }
@@ -502,6 +585,12 @@ export class ServerRegistration {
     const row = document.getElementById(`container_${this.serverId}`)
     if (!row) return
     row.classList.toggle('is-series-off', !this.isVisible)
+
+    // The row acts as a toggle for showing only the selected servers on the graph
+    if (!isLegacyDesign()) {
+      const selected = this._app.graphDisplayManager.isServerSelected(this)
+      row.setAttribute('aria-pressed', selected ? 'true' : 'false')
+    }
   }
 
   initServerStatus (latestPing) {
@@ -515,25 +604,32 @@ export class ServerRegistration {
 
     serverElement.id = `container_${this.serverId}`
     serverElement.className = 'server'
+    serverElement.tabIndex = 0
+    serverElement.setAttribute('role', 'button')
+    serverElement.setAttribute('aria-pressed', 'false')
+    serverElement.title = 'Click to show only this server on the graph'
     serverElement.style.setProperty('--server-color', safeCssColor(this.data.color))
-    serverElement.innerHTML = `<img class="server-favicon" src="${latestPing.favicon || MISSING_FAVICON}" id="favicon_${this.serverId}" alt="">
+    serverElement.innerHTML = `<span class="mono server-rank" id="ranking_${this.serverId}"></span>
+      <img class="server-favicon" src="${latestPing.favicon || MISSING_FAVICON}" id="favicon_${this.serverId}" alt="">
       <div class="server-identity">
         <div class="server-title">
           <span class="status-dot"></span>
           <span class="server-name">${escapeHtml(this.data.name)}</span>
         </div>
-        <div class="server-ip mono">${address}</div>
+        <button type="button" class="server-ip mono" id="copy-address_${this.serverId}" title="Copy address" aria-label="Copy address ${address}">${address}</button>
       </div>
       <div class="server-players">
-        <span class="mono player-count" id="player-count_${this.serverId}"><span id="player-count-value_${this.serverId}"></span></span>
-        <span class="offline-pill" id="offline_${this.serverId}" hidden>offline</span>
+        <div class="player-line">
+          <span class="mono player-count" id="player-count_${this.serverId}"><span id="player-count-value_${this.serverId}"></span></span>
+          <span class="offline-pill" id="offline_${this.serverId}" hidden>offline</span>
+        </div>
+        <span class="mono trend" id="trend_${this.serverId}"></span>
       </div>
       <div class="server-spark" id="chart_${this.serverId}"></div>
       <div class="server-record" id="record_${this.serverId}">
         <span class="mono record-value" id="record-value_${this.serverId}">-</span>
-        <span class="mono record-date" id="record-date_${this.serverId}"></span>
       </div>
-      <button type="button" class="${this._app.favoritesManager.getIconClass(this.isFavorite)}" id="favorite-toggle_${this.serverId}" aria-pressed="false" aria-label="Toggle favourite">${FAVORITE_ICON}</button>`
+      <button type="button" class="${this._app.favoritesManager.getIconClass(this.isFavorite)}" id="favorite-toggle_${this.serverId}" aria-pressed="false" aria-label="Favourite ${escapeHtml(this.data.name)}" title="Favourite">${FAVORITE_ICON}</button>`
 
     document.getElementById('server-list').appendChild(serverElement)
   }
@@ -560,6 +656,26 @@ export class ServerRegistration {
     document.getElementById('server-list').appendChild(serverElement)
   }
 
+  copyAddress (element) {
+    const address = formatMinecraftServerAddress(this.data.ip, this.data.port)
+
+    const done = (copied) => {
+      element.classList.toggle('is-copied', copied)
+      element.innerText = copied ? 'Copied!' : address
+      clearTimeout(this._copyTimer)
+      this._copyTimer = setTimeout(() => {
+        element.classList.remove('is-copied')
+        element.innerText = address
+      }, 1500)
+    }
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(address).then(() => done(true), () => done(false))
+    } else {
+      done(false)
+    }
+  }
+
   initEventListeners () {
     const row = document.getElementById(`container_${this.serverId}`)
     const favorite = document.getElementById(`favorite-toggle_${this.serverId}`)
@@ -573,12 +689,30 @@ export class ServerRegistration {
 
     let isMouseOver = false
 
-    row.addEventListener('click', () => {
+    const toggle = () => {
       this._app.graphDisplayManager.toggleServer(this)
 
       // Toggling can hide or show the hovered server, so its focus needs recomputing
       if (isMouseOver) this._app.graphDisplayManager.focusServer(this)
+    }
+
+    row.addEventListener('click', toggle, false)
+
+    row.addEventListener('keydown', (event) => {
+      if (event.target !== row) return
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault()
+        toggle()
+      }
     }, false)
+
+    const copy = document.getElementById(`copy-address_${this.serverId}`)
+    if (copy) {
+      copy.addEventListener('click', (event) => {
+        event.stopPropagation()
+        this.copyAddress(copy)
+      }, false)
+    }
 
     // Touch has no hover out, so a tap would leave the other lines dimmed
     row.addEventListener('pointerenter', (event) => {

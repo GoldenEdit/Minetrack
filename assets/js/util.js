@@ -164,3 +164,11 @@ export function safeCssColor (color) {
   }
   return '#8a8f98'
 }
+
+// 0.1234 -> "12%", 0.004 -> "0.4%", 0.00004 -> "<0.1%"
+export function formatRatio (ratio) {
+  const percent = ratio * 100
+  if (percent > 0 && percent < 0.1) return '<0.1%'
+  if (percent < 10) return `${Number(percent.toFixed(1))}%`
+  return `${formatNumber(Math.round(percent))}%`
+}

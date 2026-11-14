@@ -29,12 +29,104 @@ export class App {
 
     const search = document.getElementById('server-search')
     if (search) {
+      const clearSearch = () => {
+        search.value = ''
+        this.serverRegistry.setSearchQuery('')
+      }
+
+      let wasSearching = false
+
       search.addEventListener('input', () => {
         this.serverRegistry.setSearchQuery(search.value)
+
+        // On a phone the list sits below the graph, so results would change off screen.
+        // Bring the list up once when a search starts, not on every keystroke.
+        const searching = search.value.trim().length > 0
+        if (searching && !wasSearching) this.revealServerList()
+        wasSearching = searching
       })
+
+      search.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+          if (search.value) {
+            clearSearch()
+          } else {
+            search.blur()
+          }
+        }
+      })
+
+      // "/" focuses search from anywhere unless the user is already typing in a field
+      document.addEventListener('keydown', (event) => {
+        if (event.key !== '/' || event.ctrlKey || event.metaKey || event.altKey) return
+
+        const target = event.target
+        if (target && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))) return
+
+        event.preventDefault()
+        search.focus()
+        search.select()
+      })
+
+      const clearButton = document.getElementById('server-empty-clear')
+      if (clearButton) {
+        clearButton.addEventListener('click', () => {
+          clearSearch()
+          search.focus()
+        })
+      }
     }
 
+    // Phones open the native share sheet instead of copying, so label the buttons to match
+    if (this.usesShareSheet()) {
+      document.querySelectorAll('[data-share-link]').forEach((button) => { button.innerText = 'Share' })
+    }
+
+    // Any [data-share-link] button shares the current view, which the graph keeps in the address bar
+    document.addEventListener('click', (event) => {
+      const button = event.target.closest && event.target.closest('[data-share-link]')
+      if (button) this.shareCurrentView(button)
+    })
+
     this.socketManager.createWebSocket()
+  }
+
+  usesShareSheet () {
+    return !!(navigator.share && window.matchMedia && window.matchMedia('(hover: none)').matches)
+  }
+
+  revealServerList () {
+    const section = document.getElementById('server-section')
+    if (!section) return
+
+    // Only scroll when the top of the list is in the lower part of the screen or below it
+    if (section.getBoundingClientRect().top > window.innerHeight * 0.6) {
+      section.scrollIntoView({ block: 'start' })
+    }
+  }
+
+  shareCurrentView (button) {
+    const url = location.href
+    const original = button.dataset.label || button.innerText
+    button.dataset.label = original
+
+    const flash = (text) => {
+      button.innerText = text
+      clearTimeout(button._flashTimer)
+      button._flashTimer = setTimeout(() => { button.innerText = original }, 1500)
+    }
+
+    // Phones get the native share sheet, which also covers Discord and messaging apps
+    if (this.usesShareSheet()) {
+      navigator.share({ title: document.title, url }).catch(() => {})
+      return
+    }
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(() => flash('Link copied'), () => flash('Copy failed'))
+    } else {
+      flash('Copy failed')
+    }
   }
 
   setPageReady (isReady) {
@@ -110,6 +202,16 @@ export class App {
     this.setPageReady(false)
   }
 
+  // Labels the sparkline column with the span of time it covers, e.g. "Last 3h"
+  setSparklineSpan (timestampPoints) {
+    const header = document.getElementById('server-list-header-spark')
+    if (!header || !timestampPoints || timestampPoints.length < 2) return
+
+    const seconds = timestampPoints[timestampPoints.length - 1] - timestampPoints[0]
+    const hours = Math.round(seconds / 3600)
+    header.innerText = hours >= 1 ? `Last ${hours}h` : `Last ${Math.max(1, Math.round(seconds / 60))}m`
+  }
+
   getTotalPlayerCount () {
     return this.serverRegistry.getServerRegistrations()
       .map(serverRegistration => serverRegistration.playerCount)
@@ -153,6 +255,8 @@ export class App {
     // Only redraw when needed
     // These operations are relatively cheap, but the site already does too much rendering
     const totalPlayerCount = this.getTotalPlayerCount()
+
+    this.serverRegistry.updateStandings()
 
     if (totalPlayerCount !== this._lastTotalPlayerCount) {
       this._lastTotalPlayerCount = totalPlayerCount

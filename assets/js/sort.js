@@ -63,6 +63,7 @@ const LEGACY_SORT_OPTIONS = [
 
 const SORT_OPTION_INDEX_DEFAULT = 0
 const SORT_MODE_STORAGE_KEY = 'minetrack_sort_mode'
+const SORT_REVERSED_STORAGE_KEY = 'minetrack_sort_reversed'
 const SORT_OPTION_INDEX_STORAGE_KEY = 'minetrack_sort_option_index'
 
 export class SortController {
@@ -72,6 +73,9 @@ export class SortController {
     this._buttonElement = document.getElementById('sort-by')
     this._textElement = this._legacy ? document.getElementById('sort-by-text') : null
     this._sortOptionIndex = SORT_OPTION_INDEX_DEFAULT
+
+    // Clicking the active column title again flips its order (new design only)
+    this._reversed = false
   }
 
   activeSortOptions () {
@@ -100,6 +104,8 @@ export class SortController {
       if (sortOptionIndex) this._sortOptionIndex = parseInt(sortOptionIndex)
       return
     }
+
+    this._reversed = localStorage.getItem(SORT_REVERSED_STORAGE_KEY) === 'true'
 
     const mode = localStorage.getItem(SORT_MODE_STORAGE_KEY)
     if (mode) {
@@ -130,6 +136,12 @@ export class SortController {
       localStorage.setItem(SORT_MODE_STORAGE_KEY, mode)
     } else {
       localStorage.removeItem(SORT_MODE_STORAGE_KEY)
+    }
+
+    if (this._reversed) {
+      localStorage.setItem(SORT_REVERSED_STORAGE_KEY, true)
+    } else {
+      localStorage.removeItem(SORT_REVERSED_STORAGE_KEY)
     }
   }
 
@@ -206,9 +218,15 @@ export class SortController {
     if (!button || button.disabled) return
 
     const index = parseInt(button.getAttribute('data-sort-index'))
-    if (index === this._sortOptionIndex || !SORT_OPTIONS[index]) return
+    if (!SORT_OPTIONS[index]) return
 
-    this._sortOptionIndex = index
+    if (index === this._sortOptionIndex) {
+      this._reversed = !this._reversed
+    } else {
+      // A newly picked column starts in its natural order
+      this._sortOptionIndex = index
+      this._reversed = false
+    }
     this.updateSortOption()
     this.updateLocalStorage()
   }
@@ -225,6 +243,7 @@ export class SortController {
     this._buttonElement.querySelectorAll('[data-sort-index]').forEach((button) => {
       const selected = parseInt(button.getAttribute('data-sort-index')) === this._sortOptionIndex
       button.classList.toggle('is-active', selected)
+      button.classList.toggle('is-reversed', selected && this._reversed)
       button.setAttribute('aria-pressed', selected ? 'true' : 'false')
     })
 
@@ -234,6 +253,7 @@ export class SortController {
     if (list) list.dataset.sort = SORT_OPTIONS[this._sortOptionIndex].mode
 
     this.sortServers()
+    this._app.serverRegistry.updateStandings()
   }
 
   sortServers = () => {
@@ -245,7 +265,7 @@ export class SortController {
     this.refreshSortAvailability()
 
     const sortOption = SORT_OPTIONS[this._sortOptionIndex]
-    const sortedServers = this.sortByFavoriteThen(sortOption.sortFunc)
+    const sortedServers = this.sortByFavoriteThen(this.directedSortFunc(sortOption))
     const sortedServerIds = sortedServers.map(server => server.serverId)
 
     // Starring the server that is already first does not change order, so the
@@ -257,6 +277,22 @@ export class SortController {
 
     this.placeFavoritesDivider(sortedServers)
     this._app.serverRegistry.applySearch()
+  }
+
+  // Flips the column's order when reversed, but servers with nothing to compare stay at the bottom either way:
+  // offline servers when sorting by players, and servers with no record yet when sorting by record
+  directedSortFunc (sortOption) {
+    if (!this._reversed) return sortOption.sortFunc
+
+    return (a, b) => {
+      if (sortOption.mode === 'players' && a.isOffline !== b.isOffline) {
+        return a.isOffline ? 1 : -1
+      }
+      if (sortOption.mode === 'record' && !a.lastRecordData !== !b.lastRecordData) {
+        return a.lastRecordData ? -1 : 1
+      }
+      return sortOption.sortFunc(b, a)
+    }
   }
 
   sortByFavoriteThen (sortFunc) {

@@ -46,6 +46,8 @@ export function parseSharedView (search) {
 
   if (params.get('history') === '0') {
     view.history = false
+  } else if (params.get('history') === '1') {
+    view.history = true
   }
 
   return view
@@ -67,6 +69,8 @@ export function writeSharedViewToUrl (view) {
   }
   if (view.history === false) {
     params.set('history', '0')
+  } else if (view.history === true) {
+    params.set('history', '1')
   }
 
   const search = params.toString()

@@ -116,8 +116,9 @@ export class GraphDisplayManager {
 
   loadLocalStorage () {
     if (typeof localStorage !== 'undefined') {
+      // The new design has no Favourites only control, so a saved choice from before would leave no way out
       const showOnlyFavorites = localStorage.getItem(SHOW_FAVORITES_STORAGE_KEY)
-      if (showOnlyFavorites) {
+      if (showOnlyFavorites && isLegacyDesign()) {
         this._showOnlyFavorites = true
       }
 
@@ -1207,19 +1208,6 @@ export class GraphDisplayManager {
       })
       return
     }
-
-    // "All" is only lit when every line is on, so comparing servers leaves neither option selected
-    const allVisible = this._app.serverRegistry.getServerRegistrations().every(server => server.isVisible)
-
-    document.querySelectorAll('.segment.graph-controls-show').forEach((button) => {
-      const showType = button.getAttribute('minetrack-show-type')
-      const active = showType === 'favorites'
-        ? this._showOnlyFavorites
-        : !this._showOnlyFavorites && allVisible
-
-      button.classList.toggle('is-active', active)
-      button.setAttribute('aria-pressed', active ? 'true' : 'false')
-    })
 
     this.updateCompareStatus()
   }

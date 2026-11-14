@@ -143,40 +143,6 @@ a:hover {
   flex-shrink: 0;
 }
 
-.segmented {
-  display: flex;
-  height: 32px;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-}
-
-.segment {
-  padding: 0 10px;
-  color: var(--text-muted);
-  font-size: 13px;
-  font-weight: 510;
-  border-left: 1px solid var(--line);
-}
-
-.segment:first-child {
-  border-left: 0;
-}
-
-.segment:hover {
-  color: var(--text);
-}
-
-.segment.is-active {
-  color: var(--text);
-  outline: 1px solid var(--text);
-  outline-offset: -1px;
-}
-
-.segment:disabled {
-  color: var(--text-tertiary);
-  cursor: default;
-}
-
 .search {
   width: 180px;
   height: 32px;
@@ -229,7 +195,6 @@ a:hover {
   margin-bottom: 8px;
 }
 
-.segmented[hidden],
 .ghost[hidden],
 .range-menu[hidden],
 .range-menu-list[hidden],
@@ -385,14 +350,6 @@ a:hover {
 }
 
 /* Graph toolbar controls share one height and a visible border so they read as buttons */
-.segmented.is-compact {
-  height: 28px;
-}
-
-.segmented.is-compact .segment {
-  font-size: 12px;
-}
-
 .check-toggle,
 .outline-button {
   display: flex;

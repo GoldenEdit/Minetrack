@@ -1,22 +1,6 @@
-FROM node:16-bullseye
+# ---- build stage: compile the frontend bundle ----
+FROM node:22-bookworm-slim AS build
 
-ARG TINI_VER="v0.19.0"
-
-# install tini
-ADD https://github.com/krallin/tini/releases/download/$TINI_VER/tini /sbin/tini
-RUN chmod +x /sbin/tini
-
-# install sqlite3
-# Bullseye security packages 404; install from the main archive.
-RUN sed -i '/debian-security/d' /etc/apt/sources.list                \
- && apt-get update                                                   \
- && apt-get install    --quiet --yes --no-install-recommends sqlite3 \
- && apt-get clean      --quiet --yes                                 \
- && apt-get autoremove --quiet --yes                                 \
- && rm -rf /var/lib/apt/lists/*
-
-# Install dependencies before copying the app so edits to servers.json,
-# HTML, and other source files do not rebuild native modules.
 WORKDIR /usr/src/minetrack
 COPY package.json package-lock.json ./
 RUN npm ci
@@ -24,12 +8,22 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-# run as non root
-# RUN addgroup --gid 10043 --system minetrack \
-#  && adduser  --uid 10042 --system --ingroup minetrack --no-create-home --gecos "" minetrack \
-#  && chown -R minetrack:minetrack /usr/src/minetrack
-# USER minetrack
+# ---- runtime stage: production deps + built assets only ----
+FROM node:22-bookworm-slim
+
+# tini for signal handling/zombie reaping, sqlite3 CLI for debugging
+RUN apt-get update \
+ && apt-get install --quiet --yes --no-install-recommends tini sqlite3 \
+ && apt-get clean --quiet --yes \
+ && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /usr/src/minetrack
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev && npm cache clean --force
+
+COPY . .
+COPY --from=build /usr/src/minetrack/dist ./dist
 
 EXPOSE 8080
 
-ENTRYPOINT ["/sbin/tini", "--", "node", "main.js"]
+ENTRYPOINT ["/usr/bin/tini", "--", "node", "main.js"]

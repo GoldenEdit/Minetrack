@@ -465,7 +465,6 @@ export class GraphDisplayManager {
     // The initial scale is not a user zoom, so keep handleScaleChange from clearing a preset
     this._lockRange = true
 
-    // eslint-disable-next-line new-cap
     this._plotInstance = new uPlot({
       plugins: [
         uPlotTooltipPlugin((pos, idx) => {

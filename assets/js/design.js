@@ -20,7 +20,7 @@ export function bindDesignSwitcher () {
 
       try {
         localStorage.setItem(DESIGN_STORAGE_KEY, choice)
-      } catch (err) {
+      } catch {
         // QuotaExceededError, or SecurityError when storage is blocked.
         // The boot script only reads localStorage, so a failed write cannot switch designs.
         return

@@ -1,7 +1,7 @@
 import uPlot from 'uplot'
 
 import { RelativeScale } from './scale'
-import { formatNumber, formatTimestampSeconds, formatDate, formatMinecraftServerAddress, formatMinecraftVersions, escapeHtml, safeCssColor } from './util'
+import { formatNumber, formatTimestampSeconds, formatDate, formatMinecraftServerAddress, formatMinecraftVersions, formatRatio, escapeHtml, safeCssColor } from './util'
 import { uPlotTooltipPlugin } from './plugins'
 import { isLegacyDesign } from './design'
 
@@ -91,6 +91,28 @@ export class ServerRegistry {
     }
 
     divider.classList.toggle('is-hidden', !(favorite && other))
+  }
+
+  // Ranks, relative size bars and week-over-week change, so servers can be compared at a glance
+  updateStandings () {
+    if (isLegacyDesign()) return
+
+    const servers = this.getServerRegistrations()
+    const online = servers.filter(server => !server.isOffline && server.playerCount > 0)
+    const total = online.reduce((sum, server) => sum + server.playerCount, 0)
+    const max = online.reduce((top, server) => Math.max(top, server.playerCount), 0)
+
+    online.sort((a, b) => b.playerCount - a.playerCount)
+    const ranks = new Map()
+    online.forEach((server, index) => ranks.set(server, index + 1))
+
+    const now = Date.now() / 1000
+
+    for (const server of servers) {
+      const rank = ranks.get(server)
+      const lastWeek = this._app.graphDisplayManager.getLastWeekPlayerCount(server.serverId, now)
+      server.updateStanding(rank, total, max, lastWeek)
+    }
   }
 
   resizeSparklines () {
@@ -360,8 +382,65 @@ export class ServerRegistration {
   updateServerRankIndex (rankIndex) {
     this.rankIndex = rankIndex
 
+    // The new design ranks by player count in #updateStanding, whatever the list is sorted by
+    if (!isLegacyDesign()) return
+
     const label = document.getElementById(`ranking_${this.serverId}`)
     if (label) label.innerText = `#${rankIndex + 1}`
+  }
+
+  updateStanding (rank, total, max, lastWeek) {
+    const rankElement = document.getElementById(`ranking_${this.serverId}`)
+    const barElement = document.getElementById(`share-bar_${this.serverId}`)
+    const trendElement = document.getElementById(`trend_${this.serverId}`)
+    const playersElement = document.getElementById(`player-count_${this.serverId}`)
+    const live = typeof rank === 'number'
+
+    if (rankElement) {
+      const text = live ? String(rank) : ''
+      if (rankElement.innerText !== text) rankElement.innerText = text
+    }
+
+    if (barElement) {
+      const width = live && max > 0 ? Math.max(2, (this.playerCount / max) * 100) : 0
+      barElement.style.width = `${width}%`
+    }
+
+    if (playersElement) {
+      if (live && total > 0) {
+        playersElement.title = `#${rank} by players · ${formatRatio(this.playerCount / total)} of everyone online`
+      } else {
+        playersElement.removeAttribute('title')
+      }
+    }
+
+    if (trendElement) {
+      let text = ''
+      let direction = ''
+
+      if (live && typeof lastWeek === 'number' && lastWeek > 0) {
+        const change = (this.playerCount - lastWeek) / lastWeek
+        const rounded = Math.round(change * 100)
+
+        if (rounded > 0) {
+          text = `▲ ${formatRatio(change)}`
+          direction = 'up'
+        } else if (rounded < 0) {
+          text = `▼ ${formatRatio(-change)}`
+          direction = 'down'
+        } else {
+          text = '0%'
+          direction = 'flat'
+        }
+
+        trendElement.title = `${formatNumber(lastWeek)} players at this time last week`
+      } else {
+        trendElement.removeAttribute('title')
+      }
+
+      if (trendElement.innerText !== text) trendElement.innerText = text
+      trendElement.dataset.direction = direction
+    }
   }
 
   _renderValue (prefix, handler) {
@@ -529,7 +608,8 @@ export class ServerRegistration {
     serverElement.setAttribute('aria-pressed', 'false')
     serverElement.title = 'Click to show only this server on the graph'
     serverElement.style.setProperty('--server-color', safeCssColor(this.data.color))
-    serverElement.innerHTML = `<img class="server-favicon" src="${latestPing.favicon || MISSING_FAVICON}" id="favicon_${this.serverId}" alt="">
+    serverElement.innerHTML = `<span class="mono server-rank" id="ranking_${this.serverId}"></span>
+      <img class="server-favicon" src="${latestPing.favicon || MISSING_FAVICON}" id="favicon_${this.serverId}" alt="">
       <div class="server-identity">
         <div class="server-title">
           <span class="status-dot"></span>
@@ -538,8 +618,14 @@ export class ServerRegistration {
         <button type="button" class="server-ip mono" id="copy-address_${this.serverId}" title="Copy address" aria-label="Copy address ${address}">${address}</button>
       </div>
       <div class="server-players">
-        <span class="mono player-count" id="player-count_${this.serverId}"><span id="player-count-value_${this.serverId}"></span></span>
-        <span class="offline-pill" id="offline_${this.serverId}" hidden>offline</span>
+        <div class="player-line">
+          <span class="mono player-count" id="player-count_${this.serverId}"><span id="player-count-value_${this.serverId}"></span></span>
+          <span class="offline-pill" id="offline_${this.serverId}" hidden>offline</span>
+        </div>
+        <div class="player-meta">
+          <span class="mono trend" id="trend_${this.serverId}"></span>
+        </div>
+        <div class="share-track"><div class="share-bar" id="share-bar_${this.serverId}"></div></div>
       </div>
       <div class="server-spark" id="chart_${this.serverId}"></div>
       <div class="server-record" id="record_${this.serverId}">

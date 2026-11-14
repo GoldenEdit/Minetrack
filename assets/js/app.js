@@ -145,6 +145,16 @@ export class App {
     this.setPageReady(false)
   }
 
+  // Labels the sparkline column with the span of time it covers, e.g. "Last 3h"
+  setSparklineSpan (timestampPoints) {
+    const header = document.getElementById('server-list-header-spark')
+    if (!header || !timestampPoints || timestampPoints.length < 2) return
+
+    const seconds = timestampPoints[timestampPoints.length - 1] - timestampPoints[0]
+    const hours = Math.round(seconds / 3600)
+    header.innerText = hours >= 1 ? `Last ${hours}h` : `Last ${Math.max(1, Math.round(seconds / 60))}m`
+  }
+
   getTotalPlayerCount () {
     return this.serverRegistry.getServerRegistrations()
       .map(serverRegistration => serverRegistration.playerCount)
@@ -188,6 +198,8 @@ export class App {
     // Only redraw when needed
     // These operations are relatively cheap, but the site already does too much rendering
     const totalPlayerCount = this.getTotalPlayerCount()
+
+    this.serverRegistry.updateStandings()
 
     if (totalPlayerCount !== this._lastTotalPlayerCount) {
       this._lastTotalPlayerCount = totalPlayerCount

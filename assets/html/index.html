@@ -79,6 +79,10 @@
 							<div id="graph-range-list" class="range-menu-list" hidden></div>
 						</div>
 						<button type="button" id="graph-reset-zoom" class="ghost" hidden>Reset zoom</button>
+						<div id="graph-compare" class="graph-compare" aria-live="polite">
+							<span id="graph-compare-text" class="graph-compare-text">Click servers below to compare</span>
+							<button type="button" id="graph-compare-clear" class="ghost graph-controls-show" minetrack-show-type="all" hidden>Clear</button>
+						</div>
 					</div>
 					<div class="graph-scroll">
 						<div id="big-graph"></div>
@@ -86,6 +90,13 @@
 				</section>
 
 				<section class="server-section">
+					<div class="server-list-header" aria-hidden="true">
+						<span class="col-rank">#</span>
+						<span class="col-server">Server</span>
+						<span class="col-players">Players</span>
+						<span class="col-spark" id="server-list-header-spark">Recent</span>
+						<span class="col-record">Record</span>
+					</div>
 					<div id="server-list" class="server-list" data-sort="players"></div>
 					<div id="server-empty" class="empty-state" role="status" hidden>
 						<p>No servers match &ldquo;<span id="server-empty-query"></span>&rdquo;</p>

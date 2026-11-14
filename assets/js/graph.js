@@ -90,9 +90,8 @@ export class GraphDisplayManager {
       }
     }
 
-    if (this._showHistory) {
-      this.refreshLastWeekGraphIfNeeded(timestamp)
-    }
+    // Last week's data also powers each server's change figure, so keep it fresh even when the lines are hidden
+    this.refreshLastWeekGraphIfNeeded(timestamp)
 
     this.updatePlotData()
   }
@@ -587,9 +586,7 @@ export class GraphDisplayManager {
     this.renderRangeControls()
     this.applyInitialRange()
 
-    if (this._showHistory) {
-      this.refreshLastWeekGraphIfNeeded(this._graphTimestamps[this._graphTimestamps.length - 1])
-    }
+    this.refreshLastWeekGraphIfNeeded(this._graphTimestamps[this._graphTimestamps.length - 1])
   }
 
   getFullRange () {
@@ -919,6 +916,25 @@ export class GraphDisplayManager {
     this._lastWeekData = payload
 
     this.updatePlotData()
+    this._app.serverRegistry.updateStandings()
+  }
+
+  // A server's player count at this time last week, from the bucket covering the timestamp
+  getLastWeekPlayerCount (serverId, timestamp) {
+    if (!this._lastWeekData) return
+
+    const { bucketStart, bucketSize, graphData } = this._lastWeekData
+    const buckets = graphData[serverId]
+    if (!buckets) return
+
+    const bucket = Math.floor((timestamp - bucketStart) / bucketSize)
+
+    // Fall back to the previous bucket since the newest one may still be empty
+    for (let index = bucket; index >= bucket - 1; index--) {
+      if (index >= 0 && index < buckets.length && typeof buckets[index] === 'number') {
+        return buckets[index]
+      }
+    }
   }
 
   isZoomed () {
@@ -1183,6 +1199,27 @@ export class GraphDisplayManager {
         button.setAttribute('aria-pressed', this._showOnlyFavorites ? 'true' : 'false')
       }
     })
+
+    this.updateCompareStatus()
+  }
+
+  // Selecting rows to compare them is otherwise undiscoverable, so say how and how many are selected
+  updateCompareStatus () {
+    const text = document.getElementById('graph-compare-text')
+    const clear = document.getElementById('graph-compare-clear')
+    if (!text || !clear) return
+
+    const count = this._soloIds.size
+    const compare = document.getElementById('graph-compare')
+    if (compare) compare.classList.toggle('is-active', count > 0)
+
+    if (count === 0) {
+      text.innerText = 'Click servers below to compare'
+      clear.hidden = true
+    } else {
+      text.innerText = count === 1 ? 'Showing 1 server' : `Comparing ${count} servers`
+      clear.hidden = false
+    }
   }
 
   reset () {

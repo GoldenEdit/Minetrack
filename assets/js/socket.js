@@ -62,6 +62,8 @@ export class SocketManager {
             this.sendHistoryGraphRequest()
           }
 
+          this._app.setSparklineSpan(payload.timestampPoints)
+
           payload.servers.forEach((serverPayload, serverId) => {
             this._app.addServer(serverId, serverPayload, payload.timestampPoints)
           })

@@ -32,6 +32,8 @@ const DAY = 24 * HOUR
 const RANGE_PRESETS = [HOUR, 6 * HOUR, DAY, 3 * DAY, 7 * DAY, 14 * DAY]
 const DEFAULT_RANGE = 3 * DAY
 const UNFOCUSED_ALPHA = 0.15
+const Y_TICK_COUNT = 10
+const Y_MAX_FACTOR = 4
 // A duration needs a unit. ms treats a bare number as milliseconds.
 function parseCustomRange (text, maxSeconds) {
   const value = text.trim()
@@ -449,18 +451,13 @@ export class GraphDisplayManager {
       })
     }
 
-    const tickCount = 10
-    const maxFactor = 4
-
     // The axis splits are drawn right after the range is computed, so they reuse its step
-    let yStep = 1
+    this._yStep = 1
     const rangeYAxis = (u) => {
       const [startIndex, endIndex] = u.series[0].idxs
-      const { scaledMin, scaledMax, scale } = RelativeScale.scaleMatrix(this.getVisibleGraphData(startIndex, endIndex), tickCount, maxFactor)
-      yStep = scale
-      return [scaledMin, scaledMax]
+      return this.computeYRange(startIndex, endIndex)
     }
-    const splitYAxis = (u, min, max) => RelativeScale.generateTicks(min, max, yStep)
+    const splitYAxis = (u, min, max) => RelativeScale.generateTicks(min, max, this._yStep)
 
     // The initial scale is not a user zoom, so keep handleScaleChange from clearing a preset
     this._lockRange = true
@@ -600,6 +597,26 @@ export class GraphDisplayManager {
     this.refreshLastWeekGraphIfNeeded(this._graphTimestamps[this._graphTimestamps.length - 1])
   }
 
+  computeYRange (startIndex, endIndex) {
+    const { scaledMin, scaledMax, scale } = RelativeScale.scaleMatrix(this.getVisibleGraphData(startIndex, endIndex), Y_TICK_COUNT, Y_MAX_FACTOR)
+    this._yStep = scale
+    return [scaledMin, scaledMax]
+  }
+
+  // The Y scale is not auto ranged, so uPlot only calls its range function on init and never when the visible
+  // servers or the time window change. Fit it explicitly to the servers visible in [minX, maxX].
+  refitYAxis (minX, maxX) {
+    const timestamps = this._graphTimestamps
+    const startIndex = timestamps.findIndex(timestamp => timestamp >= minX)
+    if (startIndex < 0) return
+
+    let endIndex = timestamps.length - 1
+    while (endIndex > startIndex && timestamps[endIndex] > maxX) endIndex--
+
+    const [min, max] = this.computeYRange(startIndex, endIndex)
+    this._plotInstance.setScale('y', { min, max })
+  }
+
   getFullRange () {
     const configured = this._app.publicConfig.graphDuration
     if (configured > 0) return configured
@@ -704,6 +721,7 @@ export class GraphDisplayManager {
 
     this.withRangeLock(() => {
       this._plotInstance.setScale('x', { min, max: last })
+      this.refitYAxis(min, last)
     })
   }
 
@@ -966,7 +984,7 @@ export class GraphDisplayManager {
     this.updateLocalStorage()
     this.syncSeriesVisibility()
 
-    // Setting the x scale again re-ranges the Y axis to include or drop the history lines
+    // The Y axis is refitted to include or drop the history lines
     const xScale = { min: this._plotInstance.scales.x.min, max: this._plotInstance.scales.x.max }
 
     this.withRangeLock(() => {
@@ -976,6 +994,7 @@ export class GraphDisplayManager {
         this.applyRange()
       } else {
         this._plotInstance.setScale('x', xScale)
+        this.refitYAxis(xScale.min, xScale.max)
       }
     })
   }
@@ -1008,12 +1027,9 @@ export class GraphDisplayManager {
     this.updateLocalStorage()
     this.syncSeriesVisibility()
 
-    // redraw alone keeps the old Y range, so set the x scale again to re-range it to the visible servers
-    const xScale = { min: this._plotInstance.scales.x.min, max: this._plotInstance.scales.x.max }
-
-    this.withRangeLock(() => {
-      this._plotInstance.setScale('x', xScale)
-    })
+    // redraw alone keeps the old Y range, so refit it to the visible servers
+    const { min, max } = this._plotInstance.scales.x
+    this.withRangeLock(() => this.refitYAxis(min, max))
 
     this._plotInstance.redraw()
   }

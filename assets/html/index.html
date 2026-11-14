@@ -88,6 +88,7 @@
 						<button type="button" id="graph-reset-zoom" class="outline-button" hidden>Reset zoom</button>
 						<div id="graph-compare" class="graph-compare" aria-live="polite">
 							<span id="graph-compare-text" class="graph-compare-text">Click servers below to compare</span>
+							<button type="button" id="graph-compare-share" class="ghost" data-share-link hidden>Copy link</button>
 							<button type="button" id="graph-compare-clear" class="ghost graph-controls-show" minetrack-show-type="all" hidden>Clear</button>
 						</div>
 					</div>
@@ -96,7 +97,7 @@
 					</div>
 				</section>
 
-				<section class="server-section">
+				<section id="server-section" class="server-section">
 					<div class="server-list-header" aria-hidden="true">
 						<span class="col-rank">#</span>
 						<span class="col-server">Server</span>
@@ -122,6 +123,17 @@
 						<button type="button" data-design-choice="old">Old</button>
 					</div>
 				</footer>
+			</div>
+
+			<!-- Shown while comparing with the graph scrolled out of view, so picking servers lower in the list still has visible feedback -->
+			<div id="compare-dock" class="compare-dock" role="region" aria-label="Comparison" hidden>
+				<span id="compare-dock-text" class="compare-dock-text"></span>
+				<button type="button" id="compare-dock-view" class="dock-button">
+					<svg viewBox="0 0 10 10" width="10" height="10" aria-hidden="true"><path d="M5 8.5 V1.8 M2 4.6 L5 1.6 L8 4.6" fill="none" stroke="currentColor" stroke-width="1.2"/></svg>
+					<span>Graph</span>
+				</button>
+				<button type="button" class="dock-button" data-share-link>Copy link</button>
+				<button type="button" class="dock-button graph-controls-show" minetrack-show-type="all">Clear</button>
 			</div>
 		</div>
 	</div>

@@ -14,6 +14,10 @@ const HIDDEN_SERVERS_STORAGE_KEY = 'minetrack_hidden_servers'
 const SHOW_FAVORITES_STORAGE_KEY = 'minetrack_show_favorites'
 const SHOW_HISTORY_STORAGE_KEY = 'minetrack_show_history'
 
+function prefersReducedMotion () {
+  return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+}
+
 const LAST_WEEK_REFRESH_MARGIN_SECONDS = 120
 const LAST_WEEK_RETRY_DELAY = 30 * 1000
 
@@ -579,6 +583,7 @@ export class GraphDisplayManager {
         serverRegistration.updateSeriesVisibility()
       }
 
+      this.observeGraphVisibility()
       this.updateControls()
     }
 
@@ -1217,18 +1222,64 @@ export class GraphDisplayManager {
   updateCompareStatus () {
     const text = document.getElementById('graph-compare-text')
     const clear = document.getElementById('graph-compare-clear')
+    const share = document.getElementById('graph-compare-share')
     if (!text || !clear) return
 
     const count = this._soloIds.size
     const compare = document.getElementById('graph-compare')
     if (compare) compare.classList.toggle('is-active', count > 0)
 
+    const touch = window.matchMedia && window.matchMedia('(hover: none)').matches
+    const label = count === 1 ? 'Showing 1 server' : `Comparing ${count} servers`
+
     if (count === 0) {
-      text.innerText = 'Click servers below to compare'
-      clear.hidden = true
+      text.innerText = touch ? 'Tap servers below to compare' : 'Click servers below to compare'
     } else {
-      text.innerText = count === 1 ? 'Showing 1 server' : `Comparing ${count} servers`
-      clear.hidden = false
+      text.innerText = label
+    }
+
+    clear.hidden = count === 0
+    if (share) share.hidden = count === 0
+
+    const dockText = document.getElementById('compare-dock-text')
+    if (dockText) dockText.innerText = label
+
+    this.updateCompareDock()
+  }
+
+  updateCompareDock () {
+    const dock = document.getElementById('compare-dock')
+    if (!dock) return
+
+    const show = this._soloIds.size > 0 && !!this._plotInstance && this._graphInView === false
+    if (dock.hidden === !show) return
+
+    dock.hidden = !show
+    document.body.classList.toggle('has-compare-dock', show)
+  }
+
+  // Tracks whether the graph is on screen, which decides if the compare dock is needed
+  observeGraphVisibility () {
+    const panel = document.getElementById('graph-panel')
+    if (!panel || typeof IntersectionObserver === 'undefined') return
+
+    if (this._graphObserver) this._graphObserver.disconnect()
+
+    this._graphObserver = new IntersectionObserver((entries) => {
+      const entry = entries[entries.length - 1]
+      // Count the graph as out of view once less than a fifth of it is on screen
+      this._graphInView = entry.isIntersecting && entry.intersectionRatio >= 0.2
+      this.updateCompareDock()
+    }, { threshold: [0, 0.2, 0.5, 1] })
+
+    this._graphObserver.observe(panel)
+
+    const view = document.getElementById('compare-dock-view')
+    if (view && !this._boundDockView) {
+      this._boundDockView = true
+      view.addEventListener('click', () => {
+        panel.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' })
+      }, false)
     }
   }
 
@@ -1244,6 +1295,13 @@ export class GraphDisplayManager {
     this._graphData = []
     this._hasLoadedSettings = false
     this._soloIds = new Set()
+
+    if (this._graphObserver) {
+      this._graphObserver.disconnect()
+      this._graphObserver = undefined
+    }
+    this._graphInView = undefined
+    this.updateCompareDock()
 
     this._lastWeekData = undefined
     this._lastWeekSeries = []

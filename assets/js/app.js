@@ -34,8 +34,16 @@ export class App {
         this.serverRegistry.setSearchQuery('')
       }
 
+      let wasSearching = false
+
       search.addEventListener('input', () => {
         this.serverRegistry.setSearchQuery(search.value)
+
+        // On a phone the list sits below the graph, so results would change off screen.
+        // Bring the list up once when a search starts, not on every keystroke.
+        const searching = search.value.trim().length > 0
+        if (searching && !wasSearching) this.revealServerList()
+        wasSearching = searching
       })
 
       search.addEventListener('keydown', (event) => {
@@ -69,7 +77,56 @@ export class App {
       }
     }
 
+    // Phones open the native share sheet instead of copying, so label the buttons to match
+    if (this.usesShareSheet()) {
+      document.querySelectorAll('[data-share-link]').forEach((button) => { button.innerText = 'Share' })
+    }
+
+    // Any [data-share-link] button shares the current view, which the graph keeps in the address bar
+    document.addEventListener('click', (event) => {
+      const button = event.target.closest && event.target.closest('[data-share-link]')
+      if (button) this.shareCurrentView(button)
+    })
+
     this.socketManager.createWebSocket()
+  }
+
+  usesShareSheet () {
+    return !!(navigator.share && window.matchMedia && window.matchMedia('(hover: none)').matches)
+  }
+
+  revealServerList () {
+    const section = document.getElementById('server-section')
+    if (!section) return
+
+    // Only scroll when the top of the list is in the lower part of the screen or below it
+    if (section.getBoundingClientRect().top > window.innerHeight * 0.6) {
+      section.scrollIntoView({ block: 'start' })
+    }
+  }
+
+  shareCurrentView (button) {
+    const url = location.href
+    const original = button.dataset.label || button.innerText
+    button.dataset.label = original
+
+    const flash = (text) => {
+      button.innerText = text
+      clearTimeout(button._flashTimer)
+      button._flashTimer = setTimeout(() => { button.innerText = original }, 1500)
+    }
+
+    // Phones get the native share sheet, which also covers Discord and messaging apps
+    if (this.usesShareSheet()) {
+      navigator.share({ title: document.title, url }).catch(() => {})
+      return
+    }
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(() => flash('Link copied'), () => flash('Copy failed'))
+    } else {
+      flash('Copy failed')
+    }
   }
 
   setPageReady (isReady) {

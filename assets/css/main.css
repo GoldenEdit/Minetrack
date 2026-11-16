@@ -297,6 +297,7 @@ a:hover {
 
 .range-menu-custom input {
   flex: 1;
+  width: 0;
   min-width: 0;
   height: 22px;
   padding: 0 6px;
@@ -1027,6 +1028,12 @@ footer {
   color: var(--text);
 }
 
+.tip-more {
+  margin-top: 4px;
+  color: var(--text-tertiary);
+  font-size: 11px;
+}
+
 .tip-prev {
   margin-left: 8px;
   color: var(--text-tertiary);
@@ -1107,13 +1114,24 @@ footer {
     top: -56px;
   }
 
+  /* The graph panel sits right under the header, so it needs no gap or top border of its own */
   .shell {
-    padding: 16px 0 48px;
+    padding: 0 0 48px;
     gap: 24px;
   }
 
+  /* The graph runs to the screen edges so the plot gets the full width of the phone */
   .graph-panel {
-    padding: 12px;
+    margin: 0 -16px;
+    padding: 12px 8px 8px;
+    border-top: 0;
+    border-left: 0;
+    border-right: 0;
+    border-radius: 0;
+  }
+
+  .graph-controls {
+    padding: 0 4px;
   }
 
   .server-section,
@@ -1161,18 +1179,32 @@ footer {
     min-width: 0;
   }
 
+  /* 16px text keeps iOS from zooming the page when a field is focused */
   .search {
     flex: 1;
     width: auto;
     min-width: 0;
+    height: 36px;
+    font-size: 16px;
+  }
+
+  .range-menu-custom input {
+    height: 28px;
+    font-size: 16px;
   }
 
   .graph-scroll {
     min-height: 240px;
   }
 
+  /* Matches the edge to edge graph panel so the page does not jump when it loads */
   .sk-graph {
-    height: 240px;
+    height: 320px;
+    margin: 0 -16px;
+    border-top: 0;
+    border-left: 0;
+    border-right: 0;
+    border-radius: 0;
   }
 
   /* Phones keep the titles as the sort control: Server on the left, Players and Record on the right */
@@ -1215,6 +1247,11 @@ footer {
   .server-list[data-sort="record"] .server-record {
     display: block;
     grid-area: players;
+  }
+
+  /* Most rows have no trend worth showing, and the empty line would push the count off centre */
+  .trend:empty {
+    display: none;
   }
 
   .server-rank { grid-area: rank; }

@@ -36,6 +36,7 @@ const Y_TICK_COUNT = 10
 const Y_MAX_FACTOR = 4
 // Below this width the graph fits the phone screen instead of scrolling sideways, with tighter axes to make room
 const NARROW_WIDTH = 768
+const NARROW_TOOLTIP_ROWS = 8
 
 function isNarrowViewport () {
   return window.innerWidth < NARROW_WIDTH
@@ -896,8 +897,31 @@ export class GraphDisplayManager {
       .sort((a, b) => compareFavoriteFirst(a, b) || a.data.name.localeCompare(b.data.name))
   }
 
+  // Phones only fit a handful of rows above the graph, so show the busiest servers plus the one being touched
+  getTooltipRows (idx, closestSeriesIndex) {
+    const servers = this.getTooltipServers()
+    if (!isNarrowViewport() || servers.length <= NARROW_TOOLTIP_ROWS) {
+      return { servers, hidden: 0 }
+    }
+
+    const isActive = serverRegistration => closestSeriesIndex === serverRegistration.getGraphDataIndex() ||
+      closestSeriesIndex === this.getLastWeekSeriesIndex(serverRegistration.serverId)
+    const value = serverRegistration => {
+      const point = this.getGraphDataPoint(serverRegistration.serverId, idx)
+      return typeof point === 'number' ? point : -1
+    }
+
+    const ranked = servers.slice().sort((a, b) => value(b) - value(a))
+    const shown = ranked.slice(0, NARROW_TOOLTIP_ROWS)
+    const active = ranked.find(isActive)
+    if (active && !shown.includes(active)) shown[shown.length - 1] = active
+
+    return { servers: shown, hidden: servers.length - shown.length }
+  }
+
   formatTooltip (idx, closestSeriesIndex) {
-    const rows = this.getTooltipServers()
+    const { servers, hidden } = this.getTooltipRows(idx, closestSeriesIndex)
+    const rows = servers
       .map(serverRegistration => {
         const point = this.getGraphDataPoint(serverRegistration.serverId, idx)
         const lastWeekSeriesIndex = this.getLastWeekSeriesIndex(serverRegistration.serverId)
@@ -914,7 +938,9 @@ export class GraphDisplayManager {
         return `<div class="tip-row${isActive ? ' is-active' : ''}"><span class="tip-dot" style="background:${safeCssColor(serverRegistration.data.color)}"></span><span class="tip-name">${escapeHtml(serverRegistration.data.name)}</span><span class="tip-count">${formatNumber(point)}${previous}</span></div>`
       }).join('')
 
-    return `<div class="tip-time">${escapeHtml(formatDayTime(this._graphTimestamps[idx]))}</div>${rows}`
+    const more = hidden > 0 ? `<div class="tip-more">+${hidden} more</div>` : ''
+
+    return `<div class="tip-time">${escapeHtml(formatDayTime(this._graphTimestamps[idx]))}</div>${rows}${more}`
   }
 
   formatLegacyTooltip (idx, closestSeriesIndex) {

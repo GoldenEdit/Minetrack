@@ -110,9 +110,7 @@ export function formatMinecraftVersions (versions, knownVersions) {
 }
 
 export function formatTimestampSeconds (secs) {
-  const date = new Date(0)
-  date.setUTCSeconds(secs)
-  return date.toLocaleTimeString()
+  return new Date(secs * 1000).toLocaleTimeString()
 }
 
 // Formatters are built once because these run on every cursor move and every graph paint
@@ -134,9 +132,7 @@ export function formatDayTime (secs) {
 }
 
 export function formatDate (secs) {
-  const date = new Date(0)
-  date.setUTCSeconds(secs)
-  return date.toLocaleDateString()
+  return new Date(secs * 1000).toLocaleDateString()
 }
 
 export function formatPercent (x, over) {

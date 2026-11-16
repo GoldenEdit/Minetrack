@@ -18,7 +18,7 @@ servers.forEach((server, serverId) => {
     }
 
     const color = Math.floor(Math.abs((Math.sin(hash) * 10000) % 1 * 16777216)).toString(16)
-    server.color = '#' + Array(6 - color.length + 1).join('0') + color
+    server.color = '#' + color.padStart(6, '0')
   }
 
   // Init a ServerRegistration instance of each entry in servers.json
@@ -27,7 +27,7 @@ servers.forEach((server, serverId) => {
 
 if (!config.serverGraphDuration) {
   logger.log('warn', '"serverGraphDuration" is not defined in config.json - defaulting to 3 minutes!')
-  config.serverGraphDuration = 3 * 60 * 10000
+  config.serverGraphDuration = 3 * 60 * 1000
 }
 
 if (!config.logToDatabase) {

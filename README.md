@@ -37,7 +37,7 @@ For updates and release notes, please read the [CHANGELOG](docs/CHANGELOG.md).
 **Migrating to Minetrack 5?** See the [migration guide](docs/MIGRATING.md).
 
 ## Installation
-1. Node 12.4.0+ is required (you can check your version using `node -v`)
+1. Node 22+ is required (you can check your version using `node -v`)
 2. Make sure everything is correct in ```config.json```.
 3. Add/remove servers by editing the ```servers.json``` file
 4. Run ```npm install```
@@ -46,7 +46,7 @@ For updates and release notes, please read the [CHANGELOG](docs/CHANGELOG.md).
 
 (There's also ```install.sh``` and ```start.sh```, but they may not work for your OS.)
 
-Database logging is disabled by default. You can enable it in ```config.json``` by setting ```logToDatabase``` to true.
+Database logging is controlled by ```logToDatabase``` in ```config.json``` (enabled in the shipped config) and stores pings in ```/database/database.sql```.
 This requires sqlite3 drivers to be installed.
 
 ## Docker

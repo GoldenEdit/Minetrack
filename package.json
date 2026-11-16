@@ -7,10 +7,8 @@
     "finalhandler": "^2.1.1",
     "mcpe-ping-fixed": "0.0.3",
     "mcping-js": "^1.5.0",
-    "ms": "^2.1.3",
     "serve-static": "^2.2.1",
     "sqlite3": "^6.0.1",
-    "uplot": "^1.6.32",
     "winston": "^3.19.0",
     "ws": "^8.23.0"
   },
@@ -39,11 +37,12 @@
     }
   },
   "devDependencies": {
-    "@babel/core": "^8.1.2",
     "@eslint/js": "^10.0.1",
     "eslint": "^10.15.0",
     "globals": "^17.14.0",
-    "parcel": "^2.16.4"
+    "ms": "^2.1.3",
+    "parcel": "^2.16.4",
+    "uplot": "^1.6.32"
   },
   "scripts": {
     "build": "eslint assets/js/*.js && parcel build assets/html/index.html --dist-dir dist",

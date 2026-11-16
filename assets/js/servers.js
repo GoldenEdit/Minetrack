@@ -1,7 +1,7 @@
 import uPlot from 'uplot'
 
 import { RelativeScale } from './scale'
-import { formatNumber, formatTimestampSeconds, formatDate, formatMinecraftServerAddress, formatMinecraftVersions, formatRatio, escapeHtml, safeCssColor } from './util'
+import { formatNumber, formatTimestampSeconds, formatDate, formatMinecraftServerAddress, formatMinecraftVersions, formatRatio, escapeHtml, safeCssColor, readableSeriesColor } from './util'
 import { uPlotTooltipPlugin } from './plugins'
 import { isLegacyDesign } from './design'
 
@@ -166,6 +166,9 @@ export class ServerRegistration {
     this._app = app
     this.serverId = serverId
     this.data = data
+
+    // The new design draws on a dark card, so colours too dark to see there are lightened
+    if (!isLegacyDesign()) this.data.color = readableSeriesColor(data.color)
     this._graphData = [[], []]
     this._failedSequentialPings = 0
   }
@@ -428,7 +431,7 @@ export class ServerRegistration {
 
         if (Math.abs(change) >= TREND_THRESHOLD) {
           direction = change > 0 ? 'up' : 'down'
-          html = `<span class="trend-arrow">${change > 0 ? '▲' : '▼'}</span>${formatRatio(Math.abs(change))}`
+          html = `<span class="trend-arrow" aria-hidden="true">${change > 0 ? '▲' : '▼'}</span><span class="sr-only">${change > 0 ? 'Up' : 'Down'} </span>${formatRatio(Math.abs(change))}`
         }
 
         trendElement.title = `${formatNumber(lastWeek)} players at this time last week`
@@ -605,27 +608,31 @@ export class ServerRegistration {
     serverElement.tabIndex = 0
     serverElement.setAttribute('role', 'button')
     serverElement.setAttribute('aria-pressed', 'false')
+    // A short name, rather than every piece of text in the row read out in one go
+    serverElement.setAttribute('aria-label', `Show ${this.data.name} on the graph`)
     serverElement.title = 'Click to show only this server on the graph'
     serverElement.style.setProperty('--server-color', safeCssColor(this.data.color))
-    serverElement.innerHTML = `<span class="mono server-rank" id="ranking_${this.serverId}"></span>
-      <img class="server-favicon" src="${latestPing.favicon || MISSING_FAVICON}" id="favicon_${this.serverId}" alt="">
+    serverElement.innerHTML = `<span class="num server-rank" id="ranking_${this.serverId}"></span>
+      <span class="server-avatar">
+        <img class="server-favicon" src="${latestPing.favicon || MISSING_FAVICON}" id="favicon_${this.serverId}" alt="">
+        <span class="status-dot"></span>
+      </span>
       <div class="server-identity">
         <div class="server-title">
-          <span class="status-dot"></span>
           <span class="server-name">${escapeHtml(this.data.name)}</span>
         </div>
-        <button type="button" class="server-ip mono" id="copy-address_${this.serverId}" title="Copy address" aria-label="Copy address ${address}">${address}</button>
+        <button type="button" class="server-ip mono" id="copy-address_${this.serverId}" title="Copy address" aria-label="Copy address ${address}" aria-live="polite">${address}</button>
       </div>
       <div class="server-players">
         <div class="player-line">
-          <span class="mono player-count" id="player-count_${this.serverId}"><span id="player-count-value_${this.serverId}"></span></span>
+          <span class="num player-count" id="player-count_${this.serverId}"><span id="player-count-value_${this.serverId}"></span></span>
           <span class="offline-pill" id="offline_${this.serverId}" hidden>offline</span>
         </div>
-        <span class="mono trend" id="trend_${this.serverId}"></span>
+        <span class="num trend" id="trend_${this.serverId}"></span>
       </div>
       <div class="server-spark" id="chart_${this.serverId}"></div>
       <div class="server-record" id="record_${this.serverId}">
-        <span class="mono record-value" id="record-value_${this.serverId}">-</span>
+        <span class="num record-value" id="record-value_${this.serverId}">-</span>
       </div>
       <button type="button" class="${this._app.favoritesManager.getIconClass(this.isFavorite)}" id="favorite-toggle_${this.serverId}" aria-pressed="false" aria-label="Favourite ${escapeHtml(this.data.name)}" title="Favourite">${FAVORITE_ICON}</button>`
 
@@ -659,10 +666,11 @@ export class ServerRegistration {
 
     const done = (copied) => {
       element.classList.toggle('is-copied', copied)
-      element.innerText = copied ? 'Copied!' : address
+      element.classList.toggle('is-copy-failed', !copied)
+      element.innerText = copied ? 'Copied!' : 'Copy failed'
       clearTimeout(this._copyTimer)
       this._copyTimer = setTimeout(() => {
-        element.classList.remove('is-copied')
+        element.classList.remove('is-copied', 'is-copy-failed')
         element.innerText = address
       }, 1500)
     }

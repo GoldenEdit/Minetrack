@@ -147,6 +147,9 @@ export class App {
     const graphPanel = document.getElementById('graph-panel')
     if (graphPanel) graphPanel.hidden = !publicConfig.isGraphVisible
 
+    const graphPin = document.getElementById('graph-pin')
+    if (graphPin) graphPin.hidden = !publicConfig.isGraphVisible
+
     // Start repeating frontend tasks once it has received enough data to be considered active
     // This simplifies management logic at the cost of each task needing to safely handle empty data
     this.initTasks()

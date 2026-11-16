@@ -245,6 +245,9 @@ export class SortController {
       button.classList.toggle('is-active', selected)
       button.classList.toggle('is-reversed', selected && this._reversed)
       button.setAttribute('aria-pressed', selected ? 'true' : 'false')
+      // The arrow alone shows the direction, so say it for screen readers too
+      const title = button.textContent.trim()
+      button.setAttribute('aria-label', selected ? `Sort by ${title.toLowerCase()}, ${this._reversed ? 'ascending' : 'descending'}` : `Sort by ${title.toLowerCase()}`)
     })
 
     this.refreshSortAvailability()

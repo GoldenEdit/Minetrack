@@ -34,9 +34,9 @@
 			<div class="topbar-inner">
 				<div class="brand">Minetrack</div>
 				<div class="live-stats">
-					<span id="stat_totalPlayers" class="mono live-count">0</span>
+					<span id="stat_totalPlayers" class="num live-count">0</span>
 					<span class="live-label">online</span>
-					<span class="live-servers"><span id="stat_networks" class="mono">0</span> <span id="stat_networks_label">servers</span></span>
+					<span class="live-servers"><span id="stat_networks" class="num">0</span> <span id="stat_networks_label">servers</span></span>
 				</div>
 				<div class="topbar-tools">
 					<input id="server-search" class="search" type="search" placeholder="Search  /" aria-label="Search servers by name or address" aria-keyshortcuts="/" title="Search servers (press / to focus, Esc to clear)" autocomplete="off" spellcheck="false">
@@ -61,6 +61,8 @@
 
 		<div id="push">
 			<div class="shell">
+				<!-- Holds the graph in place while the server list scrolls underneath it -->
+				<div id="graph-pin" class="graph-pin">
 				<section id="graph-panel" class="graph-panel">
 					<div id="big-graph-controls" class="graph-controls">
 						<button type="button" id="graph-controls-history" class="check-toggle" role="switch" aria-checked="false" title="Overlay each server's players from this time last week as a dashed line">
@@ -69,7 +71,7 @@
 							<span>Last week</span>
 						</button>
 						<div id="graph-range" class="range-menu" hidden>
-							<button type="button" id="graph-range-toggle" class="range-menu-toggle" aria-haspopup="listbox" aria-expanded="false" aria-controls="graph-range-list">
+							<button type="button" id="graph-range-toggle" class="range-menu-toggle" aria-expanded="false" aria-controls="graph-range-list">
 								<svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><circle cx="6" cy="6" r="4.25" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M6 3.5 V6.2 L7.7 7.2" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="square"/></svg>
 								<span id="graph-range-label"></span>
 								<svg class="range-menu-chevron" viewBox="0 0 10 10" width="10" height="10" aria-hidden="true"><path d="M2 3.5 L5 6.5 L8 3.5" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="square" stroke-linejoin="miter"/></svg>
@@ -87,6 +89,7 @@
 						<div id="big-graph"></div>
 					</div>
 				</section>
+				</div>
 
 				<section id="server-section" class="server-section">
 					<!-- Column titles double as the sort control -->

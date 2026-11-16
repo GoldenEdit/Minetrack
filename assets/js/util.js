@@ -160,7 +160,64 @@ export function safeCssColor (color) {
   if (typeof color === 'string' && /^#[0-9a-fA-F]{3,8}$/.test(color)) {
     return color
   }
-  return '#8a8f98'
+  return cssVar('--text-muted') || '#8a8f98'
+}
+
+// Reads a design token from :root, so canvas drawing uses the same colours as the stylesheet
+export function cssVar (name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+}
+
+function relativeLuminance ([r, g, b]) {
+  const channel = value => {
+    const c = value / 255
+    return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)
+  }
+  return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b)
+}
+
+function hslToRgb (h, s, l) {
+  const k = n => (n + h / 30) % 12
+  const a = s * Math.min(l, 1 - l)
+  const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)))
+  return [f(0), f(8), f(4)].map(v => Math.round(v * 255))
+}
+
+function rgbToHsl ([r, g, b]) {
+  r /= 255; g /= 255; b /= 255
+  const max = Math.max(r, g, b)
+  const min = Math.min(r, g, b)
+  const l = (max + min) / 2
+  if (max === min) return [0, 0, l]
+  const d = max - min
+  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min)
+  let h
+  if (max === r) h = (g - b) / d + (g < b ? 6 : 0)
+  else if (max === g) h = (b - r) / d + 2
+  else h = (r - g) / d + 4
+  return [h * 60, s, l]
+}
+
+// Lightens a server colour until it has at least 3:1 contrast against the graph card,
+// so dark generated colours (deep blues, browns) stay visible. Hue is kept, so the colour still reads as the same server
+export function readableSeriesColor (color, background = '#141516', minContrast = 3) {
+  const hex = safeCssColor(color).slice(1)
+  const full = hex.length <= 4 ? hex.slice(0, 3).split('').map(c => c + c).join('') : hex.slice(0, 6)
+  const rgb = [0, 2, 4].map(i => parseInt(full.slice(i, i + 2), 16))
+  const bg = [1, 3, 5].map(i => parseInt(background.slice(i, i + 2), 16))
+  const bgLum = relativeLuminance(bg)
+  const contrast = c => (relativeLuminance(c) + 0.05) / (bgLum + 0.05)
+
+  if (contrast(rgb) >= minContrast) return '#' + full
+
+  const [h, s] = rgbToHsl(rgb)
+  let l = rgbToHsl(rgb)[2]
+  let out = rgb
+  while (l < 0.95 && contrast(out) < minContrast) {
+    l += 0.02
+    out = hslToRgb(h, s, l)
+  }
+  return '#' + out.map(v => v.toString(16).padStart(2, '0')).join('')
 }
 
 // 0.1234 -> "12%", 0.004 -> "0.4%", 0.00004 -> "<0.1%"

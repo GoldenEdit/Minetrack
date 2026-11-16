@@ -1,10 +1,12 @@
 import { App } from './app'
 import { isLegacyDesign } from './design'
+import { trackPinnedHeights } from './pin'
 
 const app = new App()
 
 document.addEventListener('DOMContentLoaded', () => {
   app.init()
+  trackPinnedHeights()
 
   window.addEventListener('resize', function () {
     if (isLegacyDesign()) app.percentageBar.redraw()

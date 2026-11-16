@@ -48,6 +48,30 @@ export class RelativeScale {
     )
   }
 
+  // Fits [0, max] with a step of 1, 2 or 5 x 10^n, the smallest that keeps to tickCount intervals,
+  // so a peak of 12,000 gets 0-15,000 in steps of 5,000 rather than 0-20,000 in steps of 10,000
+  static niceScale (max, tickCount) {
+    const top = Math.max(RelativeScale.isFiniteOrZero(max), 1)
+
+    for (let exponent = 0; ; exponent++) {
+      for (const multiple of [1, 2, 5]) {
+        const step = multiple * Math.pow(10, exponent)
+        const scaledMax = Math.ceil(top / step) * step
+        // Leave a little headroom so the highest line does not run along the top edge
+        const paddedMax = scaledMax === top ? scaledMax + step : scaledMax
+
+        if (paddedMax / step <= tickCount) {
+          return { scaledMin: 0, scaledMax: paddedMax, scale: step }
+        }
+      }
+    }
+  }
+
+  static niceScaleMatrix (data, tickCount) {
+    const max = data.flat().reduce((a, b) => b === null ? a : Math.max(a, b), 0)
+    return RelativeScale.niceScale(max, tickCount)
+  }
+
   static generateTicks (min, max, step) {
     const ticks = []
     for (let i = min; i <= max; i += step) {

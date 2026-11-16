@@ -76,6 +76,8 @@ Base unit 4px. Scale: **4, 8, 12, 16, 24, 32, 48, 64**.
 - Inside components: 8px between related items, 16px between groups, 24px between a heading and its block.
 - List rows: 48px minimum height (56px is fine where a row has two lines of text), and every column lines up with its header.
 - One alignment edge per column. Text in the header starts exactly where the row text below it starts.
+- A server's status dot sits on the corner of its icon (like presence on an avatar), so the name, address, column title and "Add new server" share one left edge.
+- A count's trend sits on the same line, to its left, so every count is centred in its row whether or not it has a trend.
 
 ## 4. Shape and elevation
 
@@ -112,13 +114,15 @@ Base unit 4px. Scale: **4, 8, 12, 16, 24, 32, 48, 64**.
 - Hover: a 1px `--line-strong` crosshair, a dot on the hovered series, and a tooltip on `--surface-2`.
 - Drag selection uses `--accent` at 16% fill with 1px `--accent` edges.
 - Sparklines in the list are 1.5px, with no axes, at 45% opacity until their row is hovered or selected.
+- Y axis steps go 1, 2 or 5 × 10ⁿ with about five gridlines. X axis labels are one line: times, or days once each step is a day or more. Days are also named inside the plot at each midnight.
+- Server colours too dark to see on the card (below 3:1 against `--surface-1`) are lightened in the browser, keeping their hue.
 
 ## 8. States
 
 - **Loading:** skeleton blocks at the final size of what they stand in for, pulsing `--surface-1` → `--surface-2`.
 - **Empty:** a bordered `--radius-l` box with one sentence and one action.
 - **Offline server:** the row stays in place, its text drops to `--text-tertiary`, and an "offline" pill replaces the count.
-- **Comparing:** selected rows get a 2px inset bar and a 7% tint in their series colour; the other rows drop to 45% opacity.
+- **Comparing:** selected rows get a 2px inset bar and a 7% tint in their series colour; the other rows drop to 70% opacity, which keeps their text readable.
 
 ## Checklist for changes
 

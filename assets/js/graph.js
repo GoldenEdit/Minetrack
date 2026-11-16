@@ -3,7 +3,7 @@ import uPlot from 'uplot'
 
 import { RelativeScale } from './scale'
 
-import { formatNumber, formatTimestampSeconds, formatDay, formatTime, formatDayTime, escapeHtml, safeCssColor } from './util'
+import { formatNumber, formatTimestampSeconds, formatDay, formatTime, formatDayTime, escapeHtml, safeCssColor, cssVar } from './util'
 import { uPlotTooltipPlugin, uPlotRangeSelectPlugin, uPlotDayBoundariesPlugin } from './plugins'
 import { parseSharedView, writeSharedViewToUrl, formatRange } from './share'
 
@@ -32,7 +32,11 @@ const DAY = 24 * HOUR
 const RANGE_PRESETS = [HOUR, 6 * HOUR, DAY, 3 * DAY, 7 * DAY, 14 * DAY]
 const DEFAULT_RANGE = 3 * DAY
 const UNFOCUSED_ALPHA = 0.15
+// Last week's lines sit behind the live ones, so they read as context rather than noise
+const HISTORY_ALPHA = 0.6
 const Y_TICK_COUNT = 10
+// The new design steps the Y axis in 1, 2 or 5 x 10^n and keeps to about five gridlines
+const NICE_Y_TICK_COUNT = 5
 const Y_MAX_FACTOR = 4
 // Below this width the graph fits the phone screen instead of scrolling sideways, with tighter axes to make room
 const NARROW_WIDTH = 768
@@ -458,6 +462,7 @@ export class GraphDisplayManager {
         stroke: safeCssColor(serverRegistration.data.color),
         width: legacy ? 1.5 : HISTORY_LINE_WIDTH,
         dash: legacy ? [6, 5] : [4, 4],
+        alpha: legacy ? 1 : HISTORY_ALPHA,
         show: serverRegistration.isVisible && this._showHistory,
         spanGaps: true,
         points: {
@@ -499,8 +504,8 @@ export class GraphDisplayManager {
           : [
               uPlotRangeSelectPlugin(formatDayTime),
               uPlotDayBoundariesPlugin({
-                lineColor: '#34343a',
-                labelColor: '#62666d',
+                lineColor: cssVar('--line-strong'),
+                labelColor: cssVar('--text-tertiary'),
                 fontFamily: '"JetBrains Mono", ui-monospace, monospace'
               })
             ])
@@ -548,32 +553,31 @@ export class GraphDisplayManager {
         : [
             {
               font: '11px "JetBrains Mono", ui-monospace, monospace',
-              stroke: '#62666d',
+              stroke: cssVar('--text-tertiary'),
               grid: {
                 show: false
               },
               ticks: {
-                stroke: '#23252a',
-                width: 1,
-                size: 4
+                show: false
               },
-              space: () => isNarrowViewport() ? 64 : 72
+              // One line per label: the day is named inside the plot at each midnight, so the axis only needs the time
+              values: (_self, splits, _axisIdx, _space, incr) => splits.map(secs => incr >= DAY ? formatDay(secs) : formatTime(secs)),
+              space: () => isNarrowViewport() ? 64 : 80
             },
             {
               font: '11px "JetBrains Mono", ui-monospace, monospace',
-              stroke: '#62666d',
+              stroke: cssVar('--text-tertiary'),
               size: () => isNarrowViewport() ? 40 : 56,
               ticks: {
-                stroke: '#23252a',
-                width: 1,
-                size: 4
+                show: false
               },
               values: (_self, ticks) => ticks.map(raw => isNarrowViewport() ? formatCompactNumber(raw) : formatNumber(raw)),
               grid: {
-                stroke: '#23252a',
+                stroke: cssVar('--line'),
                 width: 1
               },
-              split: splitYAxis
+              // uPlot reads `splits`; the legacy axis above still passes `split`, which uPlot ignores
+              splits: splitYAxis
             }
           ],
       scales: {
@@ -613,7 +617,10 @@ export class GraphDisplayManager {
   }
 
   computeYRange (startIndex, endIndex) {
-    const { scaledMin, scaledMax, scale } = RelativeScale.scaleMatrix(this.getVisibleGraphData(startIndex, endIndex), Y_TICK_COUNT, Y_MAX_FACTOR)
+    const data = this.getVisibleGraphData(startIndex, endIndex)
+    const { scaledMin, scaledMax, scale } = isLegacyDesign()
+      ? RelativeScale.scaleMatrix(data, Y_TICK_COUNT, Y_MAX_FACTOR)
+      : RelativeScale.niceScaleMatrix(data, NICE_Y_TICK_COUNT)
     this._yStep = scale
     return [scaledMin, scaledMax]
   }
@@ -657,8 +664,8 @@ export class GraphDisplayManager {
     const check = '<svg class="range-menu-check" viewBox="0 0 10 10" width="10" height="10" aria-hidden="true"><path d="M2 5.2 L4.1 7.3 L8 2.8" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="square" stroke-linejoin="miter"/></svg>'
 
     list.innerHTML =
-      `<div role="listbox" aria-label="Time range">${presets.map(seconds =>
-        `<button type="button" class="range-menu-option" role="option" data-range="${seconds}" aria-selected="false">${escapeHtml(formatRange(seconds))}${check}</button>`
+      `<div role="group" aria-label="Time range">${presets.map(seconds =>
+        `<button type="button" class="range-menu-option" data-range="${seconds}" aria-pressed="false">${escapeHtml(formatRange(seconds))}${check}</button>`
       ).join('')}</div>` +
       `<form class="range-menu-custom">
         <span class="range-menu-custom-label">Custom</span>
@@ -679,7 +686,7 @@ export class GraphDisplayManager {
       container.querySelectorAll('.range-menu-option').forEach(button => {
         const isActive = !isCustomZoom && parseInt(button.getAttribute('data-range')) === this._rangeSeconds
         button.classList.toggle('is-active', isActive)
-        button.setAttribute('aria-selected', isActive ? 'true' : 'false')
+        button.setAttribute('aria-pressed', isActive ? 'true' : 'false')
       })
 
       if (isCustomZoom) {
@@ -821,7 +828,12 @@ export class GraphDisplayManager {
     if (!this._rangeMenuOpen) return
 
     if (event.type === 'keydown') {
-      if (event.key === 'Escape') this.setRangeMenuOpen(false)
+      if (event.key === 'Escape') {
+        // Focus would otherwise be left on an option that has just been hidden
+        const hadFocus = document.getElementById('graph-range').contains(document.activeElement)
+        this.setRangeMenuOpen(false)
+        if (hadFocus) document.getElementById('graph-range-toggle').focus()
+      }
       return
     }
 
@@ -861,7 +873,7 @@ export class GraphDisplayManager {
       live.alpha = alpha
       live.width = isFocused ? FOCUSED_LINE_WIDTH : LINE_WIDTH
 
-      this._plotInstance.series[this.getLastWeekSeriesIndex(server.serverId)].alpha = alpha
+      this._plotInstance.series[this.getLastWeekSeriesIndex(server.serverId)].alpha = alpha * HISTORY_ALPHA
     }
 
     this._plotInstance.redraw(false)

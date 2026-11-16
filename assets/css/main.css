@@ -21,9 +21,29 @@ html, body, p {
   --text: #f7f8f8;
   --text-secondary: #d0d6e0;
   --text-muted: #8a8f98;
-  --text-tertiary: #62666d;
+  /* Least important text that still has to be read: at least 4.5:1 on canvas and surface-1 */
+  --text-tertiary: #7c8089;
+  /* Disabled and decorative marks only, never information */
+  --text-quaternary: #62666d;
+  --accent: #7170ff;
   --up: #4cb782;
   --down: #eb5757;
+
+  --radius-s: 4px;
+  --radius-m: 6px;
+  --radius-l: 8px;
+  --radius-full: 9999px;
+  --shadow-pop: 0 8px 24px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.2);
+
+  --ease: cubic-bezier(0.25, 0.1, 0.25, 1);
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+
+  --text-micro: 11px;
+  --text-small: 12px;
+  --text-regular: 13px;
+  --text-large: 15px;
+  --text-title: 20px;
   --font-sans: "Inter", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 }
@@ -40,9 +60,9 @@ body {
   color: var(--text);
   font-family: var(--font-sans);
   font-weight: 400;
-  font-size: 13px;
-  line-height: 1.4;
-  letter-spacing: -0.010em;
+  font-size: var(--text-regular);
+  line-height: 20px;
+  letter-spacing: -0.01em;
   font-feature-settings: "cv01" on, "ss03" on;
   font-optical-sizing: auto;
   overflow-x: clip;
@@ -75,16 +95,34 @@ a:hover {
   color: var(--text);
 }
 
+/* Code-like strings: addresses and timestamps */
 .mono {
   font-family: var(--font-mono);
   font-weight: 400;
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum" on;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
+}
+
+/* Numbers that update: Inter with equal-width digits, so they line up and do not jitter */
+.num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" on, "cv01" on, "ss03" on;
 }
 
 #push {
   display: none;
+}
+
+/* Read by screen readers, not shown */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 /* Top bar */
@@ -107,9 +145,9 @@ a:hover {
 }
 
 .brand {
-  font-size: 15px;
+  font-size: var(--text-large);
   font-weight: 590;
-  letter-spacing: -0.022em;
+  letter-spacing: -0.02em;
   color: var(--text);
   flex-shrink: 0;
 }
@@ -123,16 +161,17 @@ a:hover {
 }
 
 .live-count {
-  font-size: 20px;
-  font-weight: 500;
-  letter-spacing: -0.022em;
+  font-size: var(--text-title);
+  line-height: 24px;
+  font-weight: 510;
+  letter-spacing: -0.02em;
   color: var(--text);
 }
 
 .live-label,
 .live-servers {
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--text-regular);
   font-weight: 400;
 }
 
@@ -151,7 +190,7 @@ a:hover {
   border: 1px solid var(--line);
   border-radius: 4px;
   color: var(--text);
-  font-size: 13px;
+  font-size: var(--text-regular);
 }
 
 .search::placeholder {
@@ -159,8 +198,7 @@ a:hover {
 }
 
 .search:focus {
-  outline: none;
-  border-color: var(--text-muted);
+  border-color: var(--line-strong);
 }
 
 .search::-webkit-search-cancel-button {
@@ -210,13 +248,13 @@ a:hover {
 .range-menu-toggle {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   height: 28px;
   padding: 0 8px;
   border: 1px solid var(--line);
-  border-radius: 4px;
+  border-radius: var(--radius-s);
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--text-small);
   font-weight: 510;
 }
 
@@ -230,6 +268,10 @@ a:hover {
   display: block;
 }
 
+.range-menu-chevron {
+  transition: transform var(--dur-base) var(--ease);
+}
+
 .range-menu.is-open .range-menu-chevron {
   transform: rotate(180deg);
 }
@@ -240,10 +282,16 @@ a:hover {
   top: calc(100% + 4px);
   left: 0;
   min-width: max(100%, 168px);
-  padding: 4px 0;
+  padding: 4px;
   background: var(--surface-2);
-  border: 1px solid var(--line);
-  border-radius: 4px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-m);
+  box-shadow: var(--shadow-pop);
+  animation: pop-in var(--dur-base) var(--ease);
+}
+
+@keyframes pop-in {
+  from { opacity: 0; transform: translateY(-2px); }
 }
 
 .range-menu-option {
@@ -252,17 +300,22 @@ a:hover {
   justify-content: space-between;
   gap: 16px;
   width: 100%;
-  padding: 4px 8px 4px 10px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: var(--radius-s);
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--text-small);
   font-weight: 510;
   text-align: left;
   white-space: nowrap;
 }
 
-.range-menu-option:hover,
-.range-menu-option.is-active {
+.range-menu-option:hover {
   background: var(--surface-3);
+  color: var(--text);
+}
+
+.range-menu-option.is-active {
   color: var(--text);
 }
 
@@ -279,14 +332,14 @@ a:hover {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 4px;
-  padding: 6px 8px 4px 10px;
+  margin: 4px -4px 0;
+  padding: 8px 12px 4px;
   border-top: 1px solid var(--line);
 }
 
 .range-menu-custom-label {
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--text-small);
   font-weight: 510;
   white-space: nowrap;
 }
@@ -299,23 +352,22 @@ a:hover {
   flex: 1;
   width: 0;
   min-width: 0;
-  height: 22px;
-  padding: 0 6px;
+  height: 24px;
+  padding: 0 8px;
   border: 1px solid var(--line-strong);
-  border-radius: 4px;
+  border-radius: var(--radius-s);
   background: var(--canvas);
   color: var(--text);
-  font-size: 12px;
-  font-weight: 510;
+  font-size: var(--text-small);
+  font-weight: 400;
 }
 
 .range-menu-custom input:focus {
-  outline: none;
-  border-color: var(--text-muted);
+  border-color: var(--line-strong);
 }
 
 .range-menu-custom input.is-invalid {
-  border-color: #e5484d;
+  border-color: var(--down);
 }
 
 .range-menu-custom .range-menu-check {
@@ -331,11 +383,10 @@ a:hover {
 
 .ghost {
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--text-small);
   font-weight: 510;
-  letter-spacing: -0.010em;
   padding: 4px 8px;
-  border-radius: 4px;
+  border-radius: var(--radius-s);
 }
 
 .ghost:hover,
@@ -358,16 +409,16 @@ a:hover {
   align-items: center;
   gap: 8px;
   height: 28px;
-  padding: 0 10px 0 8px;
+  padding: 0 12px 0 8px;
   border: 1px solid var(--line);
-  border-radius: 4px;
+  border-radius: var(--radius-s);
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--text-small);
   font-weight: 510;
 }
 
 .outline-button {
-  padding: 0 10px;
+  padding: 0 12px;
 }
 
 .check-toggle:hover,
@@ -385,7 +436,7 @@ a:hover {
   height: 12px;
   display: grid;
   place-items: center;
-  border: 1px solid var(--text-tertiary);
+  border: 1px solid var(--text-quaternary);
   border-radius: 2px;
   color: var(--canvas);
 }
@@ -413,6 +464,7 @@ a:hover {
 
 /* Compare dock: floats at the bottom while comparing with the graph out of view */
 .compare-dock {
+  font-variant-numeric: tabular-nums;
   position: fixed;
   z-index: 25;
   left: 50%;
@@ -425,9 +477,10 @@ a:hover {
   padding: 4px 4px 4px 12px;
   background: var(--surface-2);
   border: 1px solid var(--line-strong);
-  border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
-  font-size: 12px;
+  border-radius: var(--radius-m);
+  box-shadow: var(--shadow-pop);
+  animation: pop-in var(--dur-base) var(--ease);
+  font-size: var(--text-small);
   white-space: nowrap;
 }
 
@@ -448,9 +501,9 @@ a:hover {
   gap: 4px;
   height: 28px;
   padding: 0 8px;
-  border-radius: 4px;
+  border-radius: var(--radius-s);
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--text-small);
   font-weight: 510;
 }
 
@@ -459,9 +512,9 @@ a:hover {
   background: var(--surface-3);
 }
 
-/* Keeps the last rows reachable above the dock */
+/* Keeps the last rows reachable above the dock: the dock (38px), its 16px offset and the usual 48px gap */
 body.has-compare-dock .shell {
-  padding-bottom: 96px;
+  padding-bottom: 104px;
 }
 
 .server-section,
@@ -485,15 +538,12 @@ body.has-compare-dock .shell {
   align-items: center;
   gap: 4px;
   color: var(--text-tertiary);
-  font-size: 12px;
+  font-size: var(--text-small);
+  font-variant-numeric: tabular-nums;
 }
 
 .graph-compare.is-active {
   color: var(--text-secondary);
-}
-
-.graph-compare .ghost {
-  font-size: 12px;
 }
 
 /* Server list */
@@ -501,15 +551,16 @@ body.has-compare-dock .shell {
   min-width: 0;
 }
 
+/* The plus sits in the icon column and the text starts on the server name edge */
 .server-add {
   display: flex;
   align-items: center;
   gap: 8px;
   min-height: 48px;
-  padding: 8px 0;
+  padding: 8px 0 8px 32px;
   border-bottom: 1px solid var(--line);
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--text-regular);
   font-weight: 510;
 }
 
@@ -526,7 +577,7 @@ body.has-compare-dock .shell {
 .server-list-header,
 .server {
   display: grid;
-  grid-template-columns: 24px 24px minmax(0, 1fr) 96px 140px 88px 28px;
+  grid-template-columns: 24px 24px minmax(0, 1fr) 144px 144px 96px 28px;
 }
 
 .server-list-header {
@@ -534,9 +585,10 @@ body.has-compare-dock .shell {
   padding: 0 0 8px;
   border-bottom: 1px solid var(--line);
   color: var(--text-tertiary);
-  font-size: 11px;
+  font-size: var(--text-micro);
+  line-height: 16px;
   font-weight: 510;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
@@ -584,23 +636,31 @@ body.has-compare-dock .shell {
   transform: rotate(180deg);
 }
 
+/* Right-aligned titles carry the arrow on their left, so the text ends flush with the numbers below */
+.server-list-header .col-players::after,
+.server-list-header .col-record::after {
+  order: -1;
+}
+
 .sort-header:disabled {
-  color: var(--text-tertiary);
-  opacity: 0.5;
-  cursor: default;
+  color: var(--text-quaternary);
+  pointer-events: none;
 }
 
 .server {
+  /* The row's own background, which the status dot's ring matches */
+  --row-bg: var(--canvas);
   column-gap: 8px;
   align-items: center;
-  min-height: 48px;
+  min-height: 56px;
   padding: 8px 0;
   border-bottom: 1px solid var(--line);
+  background: var(--row-bg);
   cursor: pointer;
 }
 
 .server:hover {
-  background: var(--surface-1);
+  --row-bg: var(--surface-1);
 }
 
 .server.is-filtered {
@@ -608,21 +668,27 @@ body.has-compare-dock .shell {
 }
 
 .server:focus-visible {
-  outline: 1px solid var(--text-muted);
-  outline-offset: -1px;
-  background: var(--surface-1);
+  --row-bg: var(--surface-1);
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
 
 .server-rank {
   color: var(--text-tertiary);
-  font-size: 12px;
+  font-size: var(--text-small);
   text-align: center;
+}
+
+.server-avatar {
+  position: relative;
+  width: 24px;
+  height: 24px;
 }
 
 .server-favicon {
   width: 24px;
   height: 24px;
-  border-radius: 4px;
+  border-radius: var(--radius-s);
   display: block;
   object-fit: cover;
   background: var(--surface-2);
@@ -639,12 +705,16 @@ body.has-compare-dock .shell {
   min-width: 0;
 }
 
+/* The server's graph colour, as a presence dot on the corner of its icon */
 .status-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
   background: var(--server-color);
-  flex-shrink: 0;
+  box-shadow: 0 0 0 2px var(--row-bg);
 }
 
 .server-name {
@@ -660,10 +730,12 @@ body.has-compare-dock .shell {
 .server-ip {
   display: block;
   max-width: 100%;
+  /* Optical gap between the name and its address */
   margin-top: 2px;
   color: var(--text-muted);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--text-small);
+  line-height: 16px;
   text-align: left;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -682,12 +754,19 @@ body.has-compare-dock .shell {
   text-decoration: none;
 }
 
+.server-ip.is-copy-failed {
+  color: var(--down);
+  text-decoration: none;
+}
+
+/* The trend sits to the left of the count on one line, so every count is centred in its row */
 .server-players {
   justify-self: stretch;
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 2px;
+  flex-direction: row-reverse;
+  justify-content: flex-start;
+  align-items: baseline;
+  gap: 8px;
   min-width: 0;
 }
 
@@ -697,16 +776,20 @@ body.has-compare-dock .shell {
   align-items: center;
 }
 
+.trend:empty {
+  display: none;
+}
+
 .trend {
-  min-height: 14px;
-  line-height: 14px;
-  font-size: 11px;
+  line-height: 16px;
+  font-size: var(--text-micro);
   color: var(--text-muted);
   white-space: nowrap;
 }
 
+/* A glyph rather than text, so it is sized optically to sit with the 11px figures */
 .trend-arrow {
-  margin-right: 3px;
+  margin-right: 4px;
   font-size: 8px;
   vertical-align: 1px;
 }
@@ -721,31 +804,31 @@ body.has-compare-dock .shell {
 
 .player-count {
   display: block;
-  font-size: 16px;
-  font-weight: 500;
-  letter-spacing: -0.022em;
+  font-size: var(--text-large);
+  line-height: 20px;
+  font-weight: 510;
+  letter-spacing: -0.02em;
   color: var(--text);
 }
 
 .offline-pill {
   flex-shrink: 0;
-  height: 18px;
+  height: 20px;
   padding: 0 8px;
   border: 1px solid var(--line-strong);
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   color: var(--text-muted);
-  font-size: 11px;
-  line-height: 16px;
-  letter-spacing: 0;
+  font-size: var(--text-micro);
+  line-height: 18px;
 }
 
 .server-spark {
-  width: 140px;
+  width: 144px;
   height: 32px;
   justify-self: end;
   /* Full strength only for the row being looked at, so the list is not a wall of colour */
   opacity: 0.45;
-  transition: opacity 0.15s ease;
+  transition: opacity var(--dur-fast) var(--ease);
 }
 
 .server:hover .server-spark,
@@ -763,7 +846,7 @@ body.has-compare-dock .shell {
 .record-value {
   display: block;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--text-regular);
 }
 
 
@@ -777,7 +860,7 @@ body.has-compare-dock .shell {
   display: grid;
   place-items: center;
   color: var(--text-tertiary);
-  border-radius: 4px;
+  border-radius: var(--radius-s);
   justify-self: end;
 }
 
@@ -805,8 +888,8 @@ body.has-compare-dock .shell {
 }
 
 .server.is-series-off .status-dot {
-  background: transparent;
-  box-shadow: inset 0 0 0 1px var(--server-color);
+  background: var(--row-bg);
+  box-shadow: 0 0 0 2px var(--row-bg), inset 0 0 0 1.5px var(--server-color);
 }
 
 .server.is-series-off .server-spark,
@@ -822,13 +905,12 @@ body.has-compare-dock .shell {
 }
 
 .server.is-offline .status-dot {
-  background: var(--text-tertiary);
-  box-shadow: none;
+  background: var(--text-quaternary);
 }
 
 .server.is-offline.is-series-off .status-dot {
-  background: transparent;
-  box-shadow: inset 0 0 0 1px var(--text-tertiary);
+  background: var(--row-bg);
+  box-shadow: 0 0 0 2px var(--row-bg), inset 0 0 0 1.5px var(--text-quaternary);
 }
 
 .server.is-offline .server-favicon,
@@ -846,24 +928,25 @@ body.has-compare-dock .shell {
 
 /* Comparing: selected rows carry their line colour, the rest step back */
 .server[aria-pressed="true"] {
-  background: var(--surface-1);
-  background: color-mix(in srgb, var(--server-color) 7%, var(--canvas));
+  --row-bg: var(--surface-1);
+  --row-bg: color-mix(in srgb, var(--server-color) 7%, var(--canvas));
   box-shadow: inset 2px 0 0 var(--server-color);
 }
 
 .server[aria-pressed="true"]:hover {
-  background: var(--surface-1);
-  background: color-mix(in srgb, var(--server-color) 11%, var(--canvas));
+  --row-bg: var(--surface-1);
+  --row-bg: color-mix(in srgb, var(--server-color) 11%, var(--canvas));
 }
 
+/* Dimmed, but the address and trend stay readable */
 .server-list.is-comparing .server:not([aria-pressed="true"]) {
-  opacity: 0.45;
-  transition: opacity 0.15s ease;
+  opacity: 0.7;
+  transition: opacity var(--dur-fast) var(--ease);
 }
 
 .server-list.is-comparing .server:not([aria-pressed="true"]):hover,
 .server-list.is-comparing .server:not([aria-pressed="true"]):focus-visible {
-  opacity: 0.8;
+  opacity: 1;
 }
 
 /* States */
@@ -876,7 +959,7 @@ body.has-compare-dock .shell {
   text-align: center;
   color: var(--text-muted);
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--radius-l);
 }
 
 .empty-state[hidden] {
@@ -890,9 +973,10 @@ body.has-compare-dock .shell {
 
 /* Visible keyboard focus for controls that otherwise have no focus style */
 button:focus-visible,
-a:focus-visible {
-  outline: 1px solid var(--text-muted);
-  outline-offset: 1px;
+a:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 footer {
@@ -901,26 +985,25 @@ footer {
   justify-content: space-between;
   gap: 16px;
   color: var(--text-tertiary);
-  font-size: 12px;
+  font-size: var(--text-small);
 }
 
 .design-switch {
   display: flex;
   height: 28px;
+  padding: 2px;
+  gap: 2px;
   border: 1px solid var(--line);
-  border-radius: 4px;
+  border-radius: var(--radius-s);
   flex-shrink: 0;
 }
 
 .design-switch button {
-  padding: 0 10px;
+  padding: 0 8px;
+  border-radius: 2px;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--text-small);
   font-weight: 510;
-}
-
-.design-switch button + button {
-  border-left: 1px solid var(--line);
 }
 
 .design-switch button:hover,
@@ -928,9 +1011,9 @@ footer {
   color: var(--text);
 }
 
+/* A fill rather than an outline, so the focus ring still shows on the active choice */
 .design-switch button.is-active {
-  outline: 1px solid var(--text);
-  outline-offset: -1px;
+  background: var(--surface-3);
 }
 
 /* Loading */
@@ -939,21 +1022,23 @@ footer {
   animation: surface-pulse 1.6s ease-in-out infinite;
 }
 
+/* The skeleton matches the loaded page, so nothing jumps when the data arrives */
 .sk-graph {
-  height: 300px;
+  height: 370px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--radius-l);
 }
 
+/* Starts where the first row will, below the 25px column titles */
 .sk-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  padding-top: 25px;
 }
 
 .sk-row {
-  height: 40px;
-  border-radius: 4px;
+  height: 57px;
+  border-bottom: 1px solid var(--canvas);
 }
 
 .sk-row:nth-child(2) { animation-delay: 0.08s; }
@@ -971,8 +1056,38 @@ footer {
   50% { background: var(--surface-2); }
 }
 
+/* State changes fade colour only; nothing moves on hover */
+.server,
+.server-add,
+.status-dot,
+.search,
+.range-menu-toggle,
+.range-menu-option,
+.check-toggle,
+.check-box,
+.outline-button,
+.ghost,
+.dock-button,
+.sort-header,
+.favorite-toggle,
+.server-ip,
+.design-switch button,
+footer a {
+  transition:
+    color var(--dur-fast) var(--ease),
+    background-color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease),
+    box-shadow var(--dur-fast) var(--ease),
+    opacity var(--dur-fast) var(--ease);
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .sk { animation: none; }
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition-property: opacity !important;
+  }
 }
 
 /* Tooltip */
@@ -985,17 +1100,17 @@ footer {
   padding: 8px;
   background: var(--surface-2);
   border: 1px solid var(--line-strong);
-  border-radius: 8px;
+  border-radius: var(--radius-m);
+  box-shadow: var(--shadow-pop);
   pointer-events: none;
 }
 
 .tip-time {
   margin-bottom: 8px;
-  color: var(--text-tertiary);
+  color: var(--text-muted);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--text-micro);
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
 }
 
 .tip-row {
@@ -1003,9 +1118,11 @@ footer {
   grid-template-columns: 6px minmax(0, 1fr) auto;
   gap: 8px;
   align-items: center;
+  /* Rows sit 20px apart: 16px lines with a 2px optical gap above and below */
   padding: 2px 0;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--text-small);
+  line-height: 16px;
   font-weight: 400;
 }
 
@@ -1017,7 +1134,7 @@ footer {
 .tip-dot {
   width: 6px;
   height: 6px;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
 }
 
 .tip-name {
@@ -1027,9 +1144,7 @@ footer {
 }
 
 .tip-count {
-  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
   color: var(--text-secondary);
 }
 
@@ -1039,13 +1154,13 @@ footer {
 
 .tip-more {
   margin-top: 4px;
-  color: var(--text-tertiary);
-  font-size: 11px;
+  color: var(--text-muted);
+  font-size: var(--text-micro);
 }
 
 .tip-prev {
   margin-left: 8px;
-  color: var(--text-tertiary);
+  color: var(--text-muted);
 }
 
 /* uPlot */
@@ -1087,23 +1202,24 @@ footer {
 
 .uplot .select,
 .uplot .u-select {
-  background: rgba(64, 139, 222, 0.22);
-  box-shadow: inset 1px 0 0 #408bde, inset -1px 0 0 #408bde;
+  background: rgba(113, 112, 255, 0.16);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  box-shadow: inset 1px 0 0 var(--accent), inset -1px 0 0 var(--accent);
 }
 
 .graph-range-label {
   position: absolute;
   z-index: 3;
   display: none;
-  padding: 1px 6px;
-  border-radius: 2px;
-  background: #408bde;
-  color: #fff;
+  padding: 0 8px;
+  border-radius: var(--radius-s);
+  background: var(--accent);
+  color: var(--text);
   font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 500;
+  font-size: var(--text-micro);
+  font-weight: 510;
   line-height: 16px;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
   white-space: nowrap;
   pointer-events: none;
 }
@@ -1139,8 +1255,25 @@ footer {
     border-radius: 0;
   }
 
+  /* Lines the controls up with the 16px page gutter (8px panel padding + 8px) */
   .graph-controls {
-    padding: 0 4px;
+    padding: 0 8px;
+  }
+
+  /* Touch-sized controls on phones */
+  .check-toggle,
+  .outline-button,
+  .range-menu-toggle,
+  .design-switch {
+    height: 36px;
+  }
+
+  .range-menu-option {
+    height: 36px;
+  }
+
+  .sort-header {
+    min-height: 32px;
   }
 
   .server-section,
@@ -1208,7 +1341,7 @@ footer {
 
   /* Matches the edge to edge graph panel so the page does not jump when it loads */
   .sk-graph {
-    height: 320px;
+    height: 309px;
     margin: 0 -16px;
     border-top: 0;
     border-left: 0;
@@ -1217,10 +1350,12 @@ footer {
   }
 
   /* Phones keep the titles as the sort control: Server on the left, Players and Record on the right */
+  /* The titles sit over their columns: Server over the names, the sorted number over the counts */
   .server-list-header {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 16px;
+    padding-right: 48px;
   }
 
   .server-list-header .col-rank,
@@ -1230,15 +1365,17 @@ footer {
 
   .server-list-header .col-server {
     order: 1;
+    margin-left: 64px;
     margin-right: auto;
   }
 
-  .server-list-header .col-players { order: 2; }
-  .server-list-header .col-record { order: 3; margin-right: 12px; }
+  .server-list-header .col-record { order: 2; }
+  .server-list-header .col-players { order: 3; }
+  .server-list-header:has(.col-record.is-active) .col-record { order: 4; }
 
   /* One line per server on phones: where you rank, how many players, which way it is going */
   .server {
-    grid-template-columns: 20px 24px minmax(0, 1fr) auto 40px;
+    grid-template-columns: 24px 24px minmax(0, 1fr) auto 40px;
     grid-template-areas: "rank favicon identity players star";
     align-items: center;
   }
@@ -1258,13 +1395,8 @@ footer {
     grid-area: players;
   }
 
-  /* Most rows have no trend worth showing, and the empty line would push the count off centre */
-  .trend:empty {
-    display: none;
-  }
-
   .server-rank { grid-area: rank; }
-  .server-favicon { grid-area: favicon; }
+  .server-avatar { grid-area: favicon; }
   .server-identity { grid-area: identity; }
   .server-players { grid-area: players; }
   /* Bigger star target so a near miss does not toggle the comparison instead */
@@ -1280,6 +1412,10 @@ footer {
     padding-top: 24px;
   }
 
+  #status-overlay .shell {
+    padding-top: 48px;
+  }
+
   .graph-pin {
     position: sticky;
     top: var(--pin-top, 56px);
@@ -1288,7 +1424,8 @@ footer {
     background: var(--canvas);
   }
 
-  /* The titles pin right under the graph, on a solid backdrop that hides rows passing beneath */
+  /* Pinned, the gaps around the graph tighten from 48px to 24px so more of the list fits.
+     The titles pin right under the graph, on a solid backdrop that hides rows passing beneath */
   .server-section {
     margin-top: -24px;
     scroll-margin-top: calc(var(--pin-top, 56px) + var(--graph-pin-height, 0px));

@@ -469,6 +469,15 @@ body.has-compare-dock .shell {
   scroll-margin-top: 72px;
 }
 
+/* Wraps the graph so it can be pinned; see the pinning rules at the end of the file */
+.graph-pin {
+  min-width: 0;
+}
+
+.graph-pin[hidden] {
+  display: none;
+}
+
 /* Compare status */
 .graph-compare {
   margin-left: auto;
@@ -1261,4 +1270,63 @@ footer {
   /* Bigger star target so a near miss does not toggle the comparison instead */
   .favorite-toggle { grid-area: star; align-self: center; width: 40px; height: 40px; }
 
+}
+
+/* Pinned graph: on screens tall enough to leave room for the list, the graph and
+   the column titles hold their place under the top bar and only the servers scroll */
+@media (min-width: 768px) and (min-height: 720px) {
+  /* The pin's own padding takes over the space above the graph, so the page looks the same at rest */
+  .shell {
+    padding-top: 24px;
+  }
+
+  .graph-pin {
+    position: sticky;
+    top: var(--pin-top, 56px);
+    z-index: 10;
+    padding-top: 24px;
+    background: var(--canvas);
+  }
+
+  /* The titles pin right under the graph, on a solid backdrop that hides rows passing beneath */
+  .server-section {
+    margin-top: -24px;
+    scroll-margin-top: calc(var(--pin-top, 56px) + var(--graph-pin-height, 0px));
+  }
+
+  .server-list-header {
+    position: sticky;
+    top: calc(var(--pin-top, 56px) + var(--graph-pin-height, 0px));
+    z-index: 9;
+    padding-top: 24px;
+    background: var(--canvas);
+  }
+}
+
+/* Phones pin too when there is height to spare; the graph already sits flush under the header */
+@media (max-width: 767px) and (min-height: 640px) {
+  .graph-pin {
+    position: sticky;
+    top: var(--pin-top, 0px);
+    z-index: 10;
+    margin: 0 -16px;
+    background: var(--canvas);
+  }
+
+  .graph-pin .graph-panel {
+    margin: 0;
+  }
+
+  .server-section {
+    margin-top: -12px;
+    scroll-margin-top: calc(var(--pin-top, 0px) + var(--graph-pin-height, 0px));
+  }
+
+  .server-list-header {
+    position: sticky;
+    top: calc(var(--pin-top, 0px) + var(--graph-pin-height, 0px));
+    z-index: 9;
+    padding-top: 12px;
+    background: var(--canvas);
+  }
 }

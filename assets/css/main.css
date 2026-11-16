@@ -343,14 +343,6 @@ a:hover {
   color: var(--text);
 }
 
-.ghost.graph-controls-history-off {
-  color: var(--text-tertiary);
-}
-
-.ghost.graph-controls-history-off:hover {
-  color: var(--text);
-}
-
 /* Graph toolbar controls share one height and a visible border so they read as buttons */
 .check-toggle,
 .outline-button {
@@ -1046,17 +1038,14 @@ footer {
   background: transparent;
 }
 
-.uplot .cursor-x,
 .uplot .u-cursor-x {
   border-right: 1px solid var(--line-strong) !important;
 }
 
-.uplot .cursor-y,
 .uplot .u-cursor-y {
   border-bottom: 1px solid var(--line-strong) !important;
 }
 
-#big-graph .over,
 #big-graph .u-over {
   cursor: crosshair;
 }
@@ -1076,7 +1065,6 @@ footer {
   pointer-events: none;
 }
 
-.uplot .select,
 .uplot .u-select {
   background: rgba(64, 139, 222, 0.22);
   box-shadow: inset 1px 0 0 #408bde, inset -1px 0 0 #408bde;

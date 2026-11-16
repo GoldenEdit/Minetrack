@@ -594,8 +594,6 @@ export class GraphDisplayManager {
       if (settingsToggle) settingsToggle.style.display = 'inline-block'
     } else {
       document.getElementById('big-graph-controls').style.display = 'flex'
-      const listControls = document.getElementById('server-list-controls')
-      if (listControls) listControls.hidden = false
 
       for (const serverRegistration of this._app.serverRegistry.getServerRegistrations()) {
         serverRegistration.updateSeriesVisibility()
@@ -1390,9 +1388,6 @@ export class GraphDisplayManager {
 
     const controls = document.getElementById('big-graph-controls')
     if (controls) controls.style.display = 'none'
-
-    const listControls = document.getElementById('server-list-controls')
-    if (listControls) listControls.hidden = true
 
     const settingsToggle = document.getElementById('settings-toggle')
     if (settingsToggle) settingsToggle.style.display = 'none'

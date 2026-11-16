@@ -443,7 +443,6 @@ footer a:hover {
   }
 }
 
-.uplot .select,
 .uplot .u-select {
   background: var(--color-blue);
   opacity: 0.3;

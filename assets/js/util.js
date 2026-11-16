@@ -19,7 +19,9 @@ export class Tooltip {
       offsetX *= -1
     }
 
-    const left = x + offsetX
+    // On a phone the tooltip can be nearly as wide as the screen, so keep it fully on screen either way
+    const maxLeft = window.pageXOffset + document.documentElement.clientWidth - tooltipWidth - 8
+    const left = Math.max(window.pageXOffset + 8, Math.min(x + offsetX, maxLeft))
     let top = y + offsetY
     const tooltipHeight = this._div.offsetHeight
 

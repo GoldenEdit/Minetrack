@@ -321,8 +321,9 @@ a:hover {
   flex: none;
 }
 
+/* The plot is sized to fit this box, so it never scrolls sideways */
 .graph-scroll {
-  overflow-x: auto;
+  overflow: hidden;
   min-height: 300px;
   max-width: 100%;
 }
@@ -969,7 +970,8 @@ footer {
   display: none;
   position: absolute;
   z-index: 30;
-  min-width: 220px;
+  min-width: min(220px, calc(100vw - 16px));
+  max-width: calc(100vw - 16px);
   padding: 8px;
   background: var(--surface-2);
   border: 1px solid var(--line-strong);
@@ -1166,11 +1168,11 @@ footer {
   }
 
   .graph-scroll {
-    min-height: 220px;
+    min-height: 240px;
   }
 
   .sk-graph {
-    height: 220px;
+    height: 240px;
   }
 
   /* Phones keep the titles as the sort control: Server on the left, Players and Record on the right */

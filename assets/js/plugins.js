@@ -70,7 +70,12 @@ export function uPlotDayBoundariesPlugin ({ lineColor, labelColor, fontFamily })
           ctx.stroke()
 
           if (showLabels) {
-            ctx.fillText(formatDay(day.getTime() / 1000), x + 4 * ratio, top + 4 * ratio)
+            // Skip a label that would be cut off at the right edge, which happens often on a narrow graph
+            const label = formatDay(day.getTime() / 1000)
+            const labelX = x + 4 * ratio
+            if (labelX + ctx.measureText(label).width <= left + width) {
+              ctx.fillText(label, labelX, top + 4 * ratio)
+            }
           }
         }
 

@@ -34,6 +34,21 @@ const DEFAULT_RANGE = 3 * DAY
 const UNFOCUSED_ALPHA = 0.15
 const Y_TICK_COUNT = 10
 const Y_MAX_FACTOR = 4
+// Below this width the graph fits the phone screen instead of scrolling sideways, with tighter axes to make room
+const NARROW_WIDTH = 768
+
+function isNarrowViewport () {
+  return window.innerWidth < NARROW_WIDTH
+}
+
+// 30,000 -> 30k and 1,500,000 -> 1.5M, so the Y axis labels stay short on phones
+function formatCompactNumber (x) {
+  if (typeof x !== 'number') return '-'
+  const abs = Math.abs(x)
+  if (abs >= 1e6) return `${+(x / 1e6).toFixed(1)}M`
+  if (abs >= 1e3) return `${+(x / 1e3).toFixed(1)}k`
+  return String(x)
+}
 // A duration needs a unit. ms treats a bare number as milliseconds.
 function parseCustomRange (text, maxSeconds) {
   const value = text.trim()
@@ -284,15 +299,14 @@ export class GraphDisplayManager {
       }
     }
 
-    const scroller = document.querySelector('.graph-scroll')
-    const available = scroller ? scroller.clientWidth : 0
-    const narrow = window.innerWidth < 768
+    const container = document.querySelector('.graph-scroll')
+    const available = container ? container.clientWidth : 0
+    const narrow = isNarrowViewport()
     const fallback = Math.min(1048, window.innerWidth - 32)
-    const width = narrow ? Math.max(available || 0, 720) : (available || fallback)
 
     return {
-      width: Math.max(width, 320),
-      height: narrow ? 220 : 300
+      width: Math.max(available || fallback, 240),
+      height: narrow ? 240 : 300
     }
   }
 
@@ -542,18 +556,18 @@ export class GraphDisplayManager {
                 width: 1,
                 size: 4
               },
-              space: 72
+              space: () => isNarrowViewport() ? 64 : 72
             },
             {
               font: '11px "JetBrains Mono", ui-monospace, monospace',
               stroke: '#62666d',
-              size: 56,
+              size: () => isNarrowViewport() ? 40 : 56,
               ticks: {
                 stroke: '#23252a',
                 width: 1,
                 size: 4
               },
-              values: (_self, ticks) => ticks.map(raw => formatNumber(raw)),
+              values: (_self, ticks) => ticks.map(raw => isNarrowViewport() ? formatCompactNumber(raw) : formatNumber(raw)),
               grid: {
                 stroke: '#23252a',
                 width: 1

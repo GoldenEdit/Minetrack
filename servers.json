@@ -109,6 +109,11 @@
 			"name": "ShoreSMP",
 			"ip": "shoresmp.net",
 			"type": "PC"
+	},
+	{
+			"name": "PvPHQ",
+			"ip": "pvphq.com",
+			"type": "PC"
 	}
 
 ]
